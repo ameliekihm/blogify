@@ -34,11 +34,11 @@ label {
 * {
   outline: 0;
   box-sizing: border-box;
+  font-family: 'Bree Serif', Roboto, Oxygen, sans-serif;
 }
 
 body {
   background: url('../assets/background.png') center/cover no-repeat;
-  font-family: Roboto, Oxygen, sans-serif;
   display: flex;
   justify-content: center;
   height: 100vh;
@@ -79,11 +79,12 @@ body {
   padding: 1em 3em;
   text-transform: uppercase;
   font-weight: 600;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   color: white;
   background-color: var(--accent-color);
   border-color: var(--accent-color);
   border-radius: 2px;
+  text-shadow: 2px 2px 2px rgba(0, 0, 0, 0.4);
 }
 
 .document {
