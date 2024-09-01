@@ -20,6 +20,7 @@ export class BaseComponent<T extends HTMLElement> implements Component {
     if (parent != this.element.parentElement) {
       throw new Error('Parent mismatched!');
     }
+
     parent.removeChild(this.element);
   }
 }
