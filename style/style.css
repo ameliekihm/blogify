@@ -1,5 +1,5 @@
 :root {
-  --bg-main-color: #ffffff00;
+  --bg-main-color: #ffffff72;
   --bg-accent-color: #8a8686;
   --accent-color: #9cb5f8;
   --text-accent-color: #ffe498;
@@ -37,7 +37,7 @@ label {
 }
 
 body {
-  background: url('../assets/background.png') center/cover no-repeat;
+  background: url('../assets/background4.png') center/cover no-repeat;
   display: flex;
   justify-content: center;
   height: 100vh;
@@ -55,7 +55,7 @@ body {
 }
 
 .banner {
-  background: var(--bg-main-color);
+  background: var(--document-bg-color);
   border-bottom: 1px solid var(--bg-accent-color);
   text-align: center;
 }
@@ -63,6 +63,7 @@ body {
 .banner__title {
   margin: 20px;
   color: #1b0e0e;
+  letter-spacing: 0.07em;
 }
 
 .control-panel {
@@ -74,6 +75,7 @@ body {
 .create-button {
   margin: 0.1em 0.2em;
   text-align: center;
+  letter-spacing: 0.07em;
   user-select: none;
   padding: 1em 3em;
   text-transform: uppercase;
@@ -89,7 +91,7 @@ body {
 .document {
   height: 100%;
   overflow-y: auto;
-  background-color: var(--document-bg-color);
+  background-color: var(--bg-main-color);
   /* Firefox */
   scrollbar-width: 6px;
   scrollbar-color: var(--bg-accent-color);
@@ -108,7 +110,7 @@ body {
 }
 
 .footer {
-  background: var(--bg-main-color);
+  background: var(--document-bg-color);
   border-top: 1px solid var(--border-color);
   text-align: center;
 }
