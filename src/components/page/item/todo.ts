@@ -15,6 +15,7 @@ export class TodoComponent extends BaseComponent<HTMLElement> {
     const todoElement = this.element.querySelector(
       '.todo-checkbox'
     )! as HTMLInputElement;
+
     todoElement.insertAdjacentText('afterend', todo);
   }
 }
