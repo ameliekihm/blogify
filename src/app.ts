@@ -53,17 +53,19 @@ class App {
 
   private bindElementToDialog<T extends (MediaData | TextData) & Component>(
     selector: string,
+
     InputComponent: InputComponentConstructor<T>,
+
     makeSection: (input: T) => Component
   ) {
     const element = document.querySelector(selector)! as HTMLButtonElement;
 
     element.addEventListener('click', () => {
       const dialog = new InputDialog();
+
       const input = new InputComponent();
       dialog.addChild(input);
       dialog.attachTo(this.dialogRoot);
-
       dialog.setOnCloseListener(() => {
         dialog.removeFrom(this.dialogRoot);
       });
