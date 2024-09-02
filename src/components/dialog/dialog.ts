@@ -3,6 +3,7 @@ import { Composable } from '../page/page.js';
 
 type OnCloseListener = () => void;
 type OnSubmitListener = () => void;
+
 export interface MediaData {
   readonly title: string;
   readonly url: string;
@@ -25,7 +26,7 @@ export class InputDialog
                 <div class="dialog__container">
                     <button class="close">&times;</button>
                     <div id="dialog__body"></div>
-                    <button class="dialog__submit">Add</button>
+                    <button class="button-common dialog__submit">Add</button>
                 </div>
             </dialog>`);
 
