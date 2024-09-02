@@ -9,11 +9,11 @@ export class MediaSectionInput
     super(`<div>
                     <div class="form__container">
                         <label for="title">Title</label>
-                        <input type="text" id="title" />
+                        <input type="text" id="title" placeholder="Enter a title"/>
                     </div>
                     <div class="form__container">
                         <label for="url">URL</label>
-                        <input type="text" id="url" />
+                        <input type="text" id="url" placeholder="Enter an image link or a YouTube link"/>
                     </div>
                 </div>`);
   }
