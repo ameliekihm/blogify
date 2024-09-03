@@ -30,10 +30,13 @@ li {
 p {
   color: #1b0e0e;
   font-size: 0.95rem;
+  font-family: 'Libre Baskerville', sans-serif;
 }
 
 label {
   color: var(--text-highlight-color);
+  font-weight: 700;
+  font-size: large;
 }
 
 dialog {
@@ -52,11 +55,11 @@ textarea {
 * {
   outline: 0;
   box-sizing: border-box;
-  font-family: 'Bree Serif', Roboto, Oxygen, sans-serif;
+  font-family: 'Rajdhani', Roboto, Oxygen, sans-serif;
 }
 
 body {
-  background: url('../assets/background4.png') center/cover no-repeat;
+  background: url('../assets/background5.png') center/cover no-repeat;
   display: flex;
   justify-content: center;
   height: 100vh;
@@ -82,7 +85,9 @@ body {
 .banner__title {
   margin: 20px;
   color: #1b0e0e;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.05em;
+  font-family: 'Silkscreen', sans-serif;
+  font-weight: 900;
 }
 
 .control-panel {
@@ -103,6 +108,8 @@ body {
   font-size: 0.85rem;
   border-radius: 4px;
   transition: transform 0.3s ease;
+  font-family: 'Rubik', sans-serif;
+  font-weight: 500;
 }
 
 .button-common:hover {
@@ -130,8 +137,8 @@ body {
   background-color: var(--bg-main-color);
   /* Firefox */
   scrollbar-width: 6px;
-  scrollbar-color: var(--bg-accent-color);
-  scrollbar-face-color: var(--primary-color);
+  scrollbar-color: var(--bg-title-color);
+  scrollbar-face-color: var(--bg-title-color);
 }
 
 .document::-webkit-scrollbar {
@@ -277,6 +284,8 @@ textarea::placeholder {
 .note__body {
   font-size: 1.25rem;
   color: var(--border-color);
+  font-family: 'Mukta', sans-serif;
+  font-weight: 200;
 }
 
 /* -- TODO -- */
@@ -288,6 +297,8 @@ textarea::placeholder {
 .todo-label {
   padding: 1em;
   color: var(--border-color);
+  font-family: 'Mukta', sans-serif;
+  font-weight: 200;
 }
 
 input[type='checkbox'] {
@@ -300,4 +311,9 @@ input[type='checkbox']:checked {
   height: 15px;
   transform: scale(1.5);
   accent-color: var(--title-color);
+}
+
+/*--- Drag and Drop ---*/
+.mute-children * {
+  pointer-events: none;
 }
