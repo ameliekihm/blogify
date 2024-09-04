@@ -286,6 +286,9 @@ textarea::placeholder {
   color: var(--border-color);
   font-family: 'Mukta', sans-serif;
   font-weight: 200;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-wrap: break-word;
 }
 
 /* -- TODO -- */
@@ -296,9 +299,12 @@ textarea::placeholder {
 .todo__list,
 .todo-label {
   padding: 1em;
+  align-items: center;
   color: var(--border-color);
   font-family: 'Mukta', sans-serif;
   font-weight: 200;
+  font-size: 1.25rem;
+  word-wrap: break-word;
 }
 
 input[type='checkbox'] {
@@ -316,4 +322,23 @@ input[type='checkbox']:checked {
 /*--- Drag and Drop ---*/
 .mute-children * {
   pointer-events: none;
+}
+
+.lifted {
+  animation: drag_start 250ms;
+  opacity: 0.2;
+}
+
+@keyframes drag_start {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.2;
+  }
+}
+
+.drop-area {
+  border: 2px solid var(--title-color);
+  box-shadow: 0px 0px 10px 3px var(--primary-color);
 }
