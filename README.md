@@ -1,6 +1,6 @@
 # Blogify 📝
 <p align="center">
-<img width="871" alt="git file" src="https://github.com/user-attachments/assets/4f01d582-8f5f-46b6-88b4-caa675e76291">
+<img width="871" alt="git file" src="https://github.com/user-attachments/assets/fc5ce21f-c172-47a8-a0b5-c66b01f5c4a1">
 </p>
 
 
