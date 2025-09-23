@@ -1,0 +1,25 @@
+{
+  "name": "blogify",
+  "version": "1.0.0",
+  "description": "Blogify - TypeScript-based Single Page Application, built for Cloud Native & DevOps learning",
+  "main": "dist/app.js",
+  "scripts": {
+    "build": "tsc && cp index.html dist/ && cp -R style dist/",
+    "start": "npx serve dist",
+    "clean": "rm -rf dist",
+    "test": "echo \"No test specified\" && exit 0"
+  },
+  "keywords": [
+    "typescript",
+    "spa",
+    "cloud-native",
+    "devops",
+    "blogify"
+  ],
+  "author": "Amelie Kihm",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "serve": "^14.2.0"
+  }
+}
