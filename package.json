@@ -4,7 +4,7 @@
   "description": "Blogify - TypeScript-based Single Page Application, built for Cloud Native & DevOps learning",
   "main": "dist/app.js",
   "scripts": {
-    "build": "tsc && cp index.html dist/ && cp -R style dist/",
+    "build": "tsc && cp index.html dist/ && cp -R style dist/ && cp -R assets dist/",
     "start": "npx serve dist",
     "clean": "rm -rf dist",
     "test": "echo \"No test specified\" && exit 0"
