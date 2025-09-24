@@ -1,34 +1,29 @@
 const express = require('express');
-
 const app = express();
-const port = 4000;
+const PORT = 4000;
+const cors = require('cors');
 
+app.use(cors());
 app.use(express.json());
 
-// In-memory stores
 let posts = [];
-let notes = [];
-let todos = [];
 
-// Routes
-app.get('/api/posts', (req, res) => res.json(posts));
+// GET posts
+app.get('/api/posts', (req, res) => {
+  res.json(posts);
+});
+
+// POST post
 app.post('/api/posts', (req, res) => {
-  posts.push(req.body);
-  res.status(201).json({ message: 'Post created' });
+  const { title, body } = req.body;
+  if (!title) {
+    return res.status(400).json({ error: 'Title is required' });
+  }
+  const newPost = { id: posts.length + 1, title, body };
+  posts.push(newPost);
+  res.status(201).json(newPost);
 });
 
-app.get('/api/notes', (req, res) => res.json(notes));
-app.post('/api/notes', (req, res) => {
-  notes.push(req.body);
-  res.status(201).json({ message: 'Note created' });
-});
-
-app.get('/api/todos', (req, res) => res.json(todos));
-app.post('/api/todos', (req, res) => {
-  todos.push(req.body);
-  res.status(201).json({ message: 'Todo created' });
-});
-
-app.listen(port, () => {
-  console.log(`Backend API running at http://localhost:${port}`);
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });

@@ -22,6 +22,7 @@ type InputComponentConstructor<T = (MediaData | TextData) & Component> = {
 
 class App {
   private readonly page: Component & Composable;
+
   constructor(appRoot: HTMLElement, private dialogRoot: HTMLElement) {
     this.page = new PageComponent(PageItemComponent);
     this.page.attachTo(appRoot);
@@ -49,33 +50,64 @@ class App {
       TextSectionInput,
       (input: TextSectionInput) => new TodoComponent(input.title, input.body)
     );
+
+    this.loadPostsFromAPI();
   }
 
   private bindElementToDialog<T extends (MediaData | TextData) & Component>(
     selector: string,
-
     InputComponent: InputComponentConstructor<T>,
-
     makeSection: (input: T) => Component
   ) {
     const element = document.querySelector(selector)! as HTMLButtonElement;
 
     element.addEventListener('click', () => {
       const dialog = new InputDialog();
-
       const input = new InputComponent();
       dialog.addChild(input);
       dialog.attachTo(this.dialogRoot);
+
       dialog.setOnCloseListener(() => {
         dialog.removeFrom(this.dialogRoot);
       });
 
       dialog.setOnSubmitListener(() => {
-        const image = makeSection(input);
-        this.page.addChild(image);
+        const section = makeSection(input);
+        this.page.addChild(section);
         dialog.removeFrom(this.dialogRoot);
+
+        this.savePostToAPI({
+          title: (input as any).title,
+          body: (input as any).body ?? (input as any).url ?? '',
+        });
       });
     });
+  }
+
+  private async loadPostsFromAPI() {
+    try {
+      const res = await fetch('http://localhost:4000/api/posts');
+      const posts = await res.json();
+
+      posts.forEach((post: any) => {
+        const note = new NoteComponent(post.title, post.body);
+        this.page.addChild(note);
+      });
+    } catch (err) {
+      console.error('Failed to load posts from API:', err);
+    }
+  }
+
+  private async savePostToAPI(post: { title: string; body: string }) {
+    try {
+      await fetch('http://localhost:4000/api/posts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(post),
+      });
+    } catch (err) {
+      console.error('Failed to save post:', err);
+    }
   }
 }
 
