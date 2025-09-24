@@ -29,6 +29,7 @@ export class PageItemComponent
 {
   private closeListener?: OnCloseListener;
   private dragStateListener?: OnDragStateListener<PageItemComponent>;
+  public postId?: number;
 
   constructor() {
     super(`<li draggable="true" class="page-item">
@@ -157,8 +158,8 @@ export class PageComponent
     this.dropTarget.onDropped();
   }
 
-  addChild(section: Component) {
-    const item = new this.pageItemConstructor();
+  addChild(section: Component): PageItemComponent {
+    const item = new this.pageItemConstructor() as PageItemComponent;
     item.addChild(section);
     item.attachTo(this.element, 'beforeend');
     item.setOnCloseListener(() => {
@@ -175,16 +176,13 @@ export class PageComponent
             this.dragTarget = target;
             this.updateSections('mute');
             break;
-
           case 'stop':
             this.dragTarget = undefined;
             this.updateSections('unmute');
             break;
-
           case 'enter':
             this.dropTarget = target;
             break;
-
           case 'leave':
             this.dropTarget = undefined;
             break;
@@ -193,6 +191,8 @@ export class PageComponent
         }
       }
     );
+
+    return item;
   }
 
   private updateSections(state: 'mute' | 'unmute') {
