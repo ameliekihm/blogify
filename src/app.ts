@@ -26,28 +26,24 @@ class App {
     this.bindElementToDialog<MediaSectionInput>(
       '#new-image',
       MediaSectionInput,
-      (input: MediaSectionInput) => new ImageComponent(input.title, input.url),
       'image'
     );
 
     this.bindElementToDialog<MediaSectionInput>(
       '#new-video',
       MediaSectionInput,
-      (input: MediaSectionInput) => new VideoComponent(input.title, input.url),
       'video'
     );
 
     this.bindElementToDialog<TextSectionInput>(
       '#new-note',
       TextSectionInput,
-      (input: TextSectionInput) => new NoteComponent(input.title, input.body),
       'note'
     );
 
     this.bindElementToDialog<TextSectionInput>(
       '#new-todo',
       TextSectionInput,
-      (input: TextSectionInput) => new TodoComponent(input.title, input.body),
       'todo'
     );
 
@@ -57,7 +53,6 @@ class App {
   private bindElementToDialog<T extends (MediaData | TextData) & Component>(
     selector: string,
     InputComponent: InputComponentConstructor<T>,
-    makeSection: (input: T) => Component,
     type: string
   ) {
     const element = document.querySelector(selector)! as HTMLButtonElement;
@@ -76,7 +71,22 @@ class App {
 
         try {
           const savedPost = await this.savePostToAPI(post);
-          const section = makeSection(input);
+          let section: Component;
+          if (type === 'todo') {
+            section = new TodoComponent(
+              savedPost.title,
+              savedPost.body,
+              savedPost.done,
+              savedPost.id
+            );
+          } else if (type === 'image') {
+            section = new ImageComponent(savedPost.title, savedPost.body);
+          } else if (type === 'video') {
+            section = new VideoComponent(savedPost.title, savedPost.body);
+          } else {
+            section = new NoteComponent(savedPost.title, savedPost.body);
+          }
+
           const item = this.page.addChild(section);
           item.postId = savedPost.id;
 
@@ -115,7 +125,12 @@ class App {
         } else if (post.type === 'video') {
           section = new VideoComponent(post.title, post.body);
         } else if (post.type === 'todo') {
-          section = new TodoComponent(post.title, post.body);
+          section = new TodoComponent(
+            post.title,
+            post.body,
+            post.done,
+            post.id
+          );
         } else {
           section = new NoteComponent(post.title, post.body);
         }

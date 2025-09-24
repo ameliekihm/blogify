@@ -22,8 +22,24 @@ app.post('/api/posts', (req, res) => {
     return res.status(400).json({ error: 'Type is required' });
   }
   const newPost = { id: nextId++, title, body, type };
+  if (type === 'todo') {
+    newPost.done = false;
+  }
   posts.push(newPost);
   res.status(201).json(newPost);
+});
+
+app.patch('/api/posts/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  const post = posts.find((p) => p.id === id);
+  if (!post) {
+    return res.status(404).json({ error: 'Post not found' });
+  }
+  const { done } = req.body;
+  if (typeof done === 'boolean') {
+    post.done = done;
+  }
+  res.json(post);
 });
 
 app.delete('/api/posts/:id', (req, res) => {
