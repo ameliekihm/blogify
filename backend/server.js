@@ -14,11 +14,14 @@ app.get('/api/posts', (req, res) => {
 });
 
 app.post('/api/posts', (req, res) => {
-  const { title, body } = req.body;
+  const { title, body, type } = req.body;
   if (!title) {
     return res.status(400).json({ error: 'Title is required' });
   }
-  const newPost = { id: nextId++, title, body };
+  if (!type) {
+    return res.status(400).json({ error: 'Type is required' });
+  }
+  const newPost = { id: nextId++, title, body, type };
   posts.push(newPost);
   res.status(201).json(newPost);
 });

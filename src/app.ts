@@ -26,25 +26,29 @@ class App {
     this.bindElementToDialog<MediaSectionInput>(
       '#new-image',
       MediaSectionInput,
-      (input: MediaSectionInput) => new ImageComponent(input.title, input.url)
+      (input: MediaSectionInput) => new ImageComponent(input.title, input.url),
+      'image'
     );
 
     this.bindElementToDialog<MediaSectionInput>(
       '#new-video',
       MediaSectionInput,
-      (input: MediaSectionInput) => new VideoComponent(input.title, input.url)
+      (input: MediaSectionInput) => new VideoComponent(input.title, input.url),
+      'video'
     );
 
     this.bindElementToDialog<TextSectionInput>(
       '#new-note',
       TextSectionInput,
-      (input: TextSectionInput) => new NoteComponent(input.title, input.body)
+      (input: TextSectionInput) => new NoteComponent(input.title, input.body),
+      'note'
     );
 
     this.bindElementToDialog<TextSectionInput>(
       '#new-todo',
       TextSectionInput,
-      (input: TextSectionInput) => new TodoComponent(input.title, input.body)
+      (input: TextSectionInput) => new TodoComponent(input.title, input.body),
+      'todo'
     );
 
     this.loadPostsFromAPI();
@@ -53,7 +57,8 @@ class App {
   private bindElementToDialog<T extends (MediaData | TextData) & Component>(
     selector: string,
     InputComponent: InputComponentConstructor<T>,
-    makeSection: (input: T) => Component
+    makeSection: (input: T) => Component,
+    type: string
   ) {
     const element = document.querySelector(selector)! as HTMLButtonElement;
     element.addEventListener('click', () => {
@@ -66,6 +71,7 @@ class App {
         const post = {
           title: (input as any).title,
           body: (input as any).body ?? (input as any).url ?? '',
+          type,
         };
 
         try {
@@ -103,7 +109,17 @@ class App {
       const posts = await res.json();
 
       posts.forEach((post: any) => {
-        const section = new NoteComponent(post.title, post.body);
+        let section: Component;
+        if (post.type === 'image') {
+          section = new ImageComponent(post.title, post.body);
+        } else if (post.type === 'video') {
+          section = new VideoComponent(post.title, post.body);
+        } else if (post.type === 'todo') {
+          section = new TodoComponent(post.title, post.body);
+        } else {
+          section = new NoteComponent(post.title, post.body);
+        }
+
         const item = this.page.addChild(section);
         item.postId = post.id;
 
@@ -127,7 +143,11 @@ class App {
     }
   }
 
-  private async savePostToAPI(post: { title: string; body: string }) {
+  private async savePostToAPI(post: {
+    title: string;
+    body: string;
+    type: string;
+  }) {
     const res = await fetch('http://localhost:4000/api/posts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
