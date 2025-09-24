@@ -34,6 +34,7 @@ export class InputDialog
 
     closeBtn.onclick = () => {
       this.closeListener && this.closeListener();
+      this.element.remove();
     };
 
     const submitBtn = this.element.querySelector(
