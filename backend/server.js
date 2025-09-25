@@ -35,10 +35,10 @@ app.patch('/api/posts/:id', (req, res) => {
   if (!post) {
     return res.status(404).json({ error: 'Post not found' });
   }
-  const { done } = req.body;
-  if (typeof done === 'boolean') {
-    post.done = done;
-  }
+  const { title, body, done } = req.body;
+  if (typeof title === 'string') post.title = title;
+  if (typeof body === 'string') post.body = body;
+  if (typeof done === 'boolean') post.done = done;
   res.json(post);
 });
 

@@ -21,12 +21,12 @@ export class InputDialog
   closeListener?: OnCloseListener;
   submitListener?: OnSubmitListener;
 
-  constructor() {
+  constructor(label: string = 'Add') {
     super(`<dialog class="dialog">
                 <div class="dialog__container">
                     <button class="close">&times;</button>
                     <div id="dialog__body"></div>
-                    <button class="button-common dialog__submit">Add</button>
+                    <button class="button-common dialog__submit">${label}</button>
                 </div>
             </dialog>`);
 
