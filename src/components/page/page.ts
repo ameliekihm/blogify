@@ -21,6 +21,7 @@ interface SectionContainer extends Component, Composable {
   muteChildren(state: 'mute' | 'unmute'): void;
   getBoundingRect(): DOMRect;
   onDropped(): void;
+  postId?: number;
 }
 
 export class PageItemComponent
@@ -59,6 +60,10 @@ export class PageItemComponent
     this.element.addEventListener('dragleave', (event: DragEvent) => {
       this.onDragLeave(event);
     });
+  }
+
+  get rootElement(): HTMLElement {
+    return this.element;
   }
 
   onDragStart(_: DragEvent) {
@@ -121,7 +126,7 @@ export class PageComponent
   extends BaseComponent<HTMLUListElement>
   implements Composable
 {
-  private children = new Set<SectionContainer>();
+  public children = new Set<SectionContainer>();
   private dropTarget?: SectionContainer;
   private dragTarget?: SectionContainer;
 
@@ -154,6 +159,7 @@ export class PageComponent
         this.dragTarget,
         dropY < srcElement.y ? 'beforebegin' : 'afterend'
       );
+      this.syncOrderWithServer();
     }
     this.dropTarget.onDropped();
   }
@@ -170,7 +176,7 @@ export class PageComponent
     this.children.add(item);
 
     item.setOnDragStateListener(
-      (target: SectionContainer, state: DragState) => {
+      (target: PageItemComponent, state: DragState) => {
         switch (state) {
           case 'start':
             this.dragTarget = target;
@@ -186,8 +192,6 @@ export class PageComponent
           case 'leave':
             this.dropTarget = undefined;
             break;
-          default:
-            throw new Error(`Unsupported State: ${state}`);
         }
       }
     );
@@ -199,5 +203,25 @@ export class PageComponent
     this.children.forEach((section: SectionContainer) => {
       section.muteChildren(state);
     });
+  }
+
+  private syncOrderWithServer() {
+    const order: number[] = [];
+    this.element.querySelectorAll('.page-item').forEach((el) => {
+      const item = Array.from(this.children).find(
+        (c) => (c as PageItemComponent).rootElement === el
+      ) as PageItemComponent;
+      if (item && item.postId) {
+        order.push(item.postId);
+      }
+    });
+
+    if (order.length > 0) {
+      fetch('http://localhost:4000/api/posts/reorder', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order }),
+      });
+    }
   }
 }

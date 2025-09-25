@@ -29,6 +29,20 @@ app.post('/api/posts', (req, res) => {
   res.status(201).json(newPost);
 });
 
+app.patch('/api/posts/reorder', (req, res) => {
+  const { order } = req.body;
+  if (!Array.isArray(order)) {
+    return res.status(400).json({ error: 'Order must be an array of IDs' });
+  }
+  const newPosts = [];
+  order.forEach((id) => {
+    const post = posts.find((p) => p.id === id);
+    if (post) newPosts.push(post);
+  });
+  posts = newPosts;
+  res.json({ success: true, posts });
+});
+
 app.patch('/api/posts/:id', (req, res) => {
   const id = parseInt(req.params.id);
   const post = posts.find((p) => p.id === id);
