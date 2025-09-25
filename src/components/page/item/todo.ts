@@ -1,4 +1,5 @@
 import { BaseComponent } from '../../component.js';
+import { API_URL } from '../../../config';
 
 export class TodoComponent extends BaseComponent<HTMLElement> {
   private checkbox: HTMLInputElement;
@@ -32,7 +33,7 @@ export class TodoComponent extends BaseComponent<HTMLElement> {
 
     if (postId) {
       this.checkbox.addEventListener('change', async () => {
-        await fetch(`http://localhost:4000/api/posts/${postId}`, {
+        await fetch(`${API_URL}/api/posts/${postId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ done: this.checkbox.checked }),

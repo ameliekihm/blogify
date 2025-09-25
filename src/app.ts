@@ -11,6 +11,7 @@ import { NoteComponent } from './components/page/item/note.js';
 import { TodoComponent } from './components/page/item/todo.js';
 import { PageComponent, PageItemComponent } from './components/page/page.js';
 import { Component } from './components/component.js';
+import { API_URL } from './config';
 
 type InputComponentConstructor<T = (MediaData | TextData) & Component> = {
   new (): T;
@@ -28,19 +29,16 @@ class App {
       MediaSectionInput,
       'image'
     );
-
     this.bindElementToDialog<MediaSectionInput>(
       '#new-video',
       MediaSectionInput,
       'video'
     );
-
     this.bindElementToDialog<TextSectionInput>(
       '#new-note',
       TextSectionInput,
       'note'
     );
-
     this.bindElementToDialog<TextSectionInput>(
       '#new-todo',
       TextSectionInput,
@@ -57,7 +55,7 @@ class App {
   ) {
     const element = document.querySelector(selector)! as HTMLButtonElement;
     element.addEventListener('click', () => {
-      const dialog = new InputDialog();
+      const dialog = new InputDialog('Add');
       const input = new InputComponent();
       dialog.addChild(input);
       dialog.attachTo(this.dialogRoot);
@@ -71,39 +69,7 @@ class App {
 
         try {
           const savedPost = await this.savePostToAPI(post);
-          let section: Component;
-          if (type === 'todo') {
-            section = new TodoComponent(
-              savedPost.title,
-              savedPost.body,
-              savedPost.done,
-              savedPost.id
-            );
-          } else if (type === 'image') {
-            section = new ImageComponent(savedPost.title, savedPost.body);
-          } else if (type === 'video') {
-            section = new VideoComponent(savedPost.title, savedPost.body);
-          } else {
-            section = new NoteComponent(savedPost.title, savedPost.body);
-          }
-
-          const item = this.page.addChild(section);
-          item.postId = savedPost.id;
-
-          item.setOnCloseListener(async () => {
-            if (item.postId) {
-              const res = await fetch(
-                `http://localhost:4000/api/posts/${item.postId}`,
-                {
-                  method: 'DELETE',
-                }
-              );
-              if (res.ok) {
-                item.removeFrom(this.page['element']);
-                this.page['children'].delete(item);
-              }
-            }
-          });
+          this.renderPost(savedPost);
         } catch (err) {
           console.error('Failed to save post:', err);
         }
@@ -113,46 +79,93 @@ class App {
     });
   }
 
+  private renderPost(post: any) {
+    let section: Component;
+    if (post.type === 'todo') {
+      section = new TodoComponent(post.title, post.body, post.done, post.id);
+    } else if (post.type === 'image') {
+      section = new ImageComponent(post.title, post.body);
+    } else if (post.type === 'video') {
+      section = new VideoComponent(post.title, post.body);
+    } else {
+      section = new NoteComponent(post.title, post.body);
+    }
+
+    const item = this.page.addChild(section);
+    item.postId = post.id;
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'edit-btn';
+    editBtn.innerHTML = `<i class="fa-solid fa-pen-to-square"></i>`;
+    editBtn.onclick = () => this.openEditDialog(post, item);
+    item['element'].appendChild(editBtn);
+
+    item.setOnCloseListener(async () => {
+      if (item.postId) {
+        const res = await fetch(`${API_URL}/api/posts/${item.postId}`, {
+          method: 'DELETE',
+        });
+        if (res.ok) {
+          item.removeFrom(this.page['element']);
+          this.page['children'].delete(item);
+        }
+      }
+    });
+  }
+
+  private openEditDialog(post: any, item: PageItemComponent) {
+    const dialog = new InputDialog('Done');
+    let input: any;
+
+    if (post.type === 'image' || post.type === 'video') {
+      input = new MediaSectionInput();
+      const titleEl = input.element.querySelector('#title') as HTMLInputElement;
+      const urlEl = input.element.querySelector('#url') as HTMLInputElement;
+      if (titleEl) titleEl.value = post.title;
+      if (urlEl) urlEl.value = post.body;
+    } else {
+      input = new TextSectionInput();
+      const titleEl = input.element.querySelector('#title') as HTMLInputElement;
+      const bodyEl = input.element.querySelector(
+        '#body'
+      ) as HTMLTextAreaElement;
+      if (titleEl) titleEl.value = post.title;
+      if (bodyEl) bodyEl.value = post.body;
+    }
+
+    dialog.addChild(input);
+    dialog.attachTo(this.dialogRoot);
+    dialog.setSubmitLabel('Done');
+
+    dialog.setOnSubmitListener(async () => {
+      const updatedPost = {
+        title: (input as any).title,
+        body: (input as any).body ?? (input as any).url ?? '',
+      };
+      try {
+        const res = await fetch(`${API_URL}/api/posts/${post.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedPost),
+        });
+        const newPost = await res.json();
+        post.title = newPost.title;
+        post.body = newPost.body;
+        if (item.updateContent) {
+          item.updateContent(newPost.title, newPost.body);
+        }
+      } catch (err) {
+        console.error('Failed to update post:', err);
+      }
+      dialog.removeFrom(this.dialogRoot);
+    });
+  }
+
   private async loadPostsFromAPI() {
     try {
-      const res = await fetch('http://localhost:4000/api/posts');
+      const res = await fetch(`${API_URL}/api/posts`);
       const posts = await res.json();
-
-      posts.forEach((post: any) => {
-        let section: Component;
-        if (post.type === 'image') {
-          section = new ImageComponent(post.title, post.body);
-        } else if (post.type === 'video') {
-          section = new VideoComponent(post.title, post.body);
-        } else if (post.type === 'todo') {
-          section = new TodoComponent(
-            post.title,
-            post.body,
-            post.done,
-            post.id
-          );
-        } else {
-          section = new NoteComponent(post.title, post.body);
-        }
-
-        const item = this.page.addChild(section);
-        item.postId = post.id;
-
-        item.setOnCloseListener(async () => {
-          if (item.postId) {
-            const res = await fetch(
-              `http://localhost:4000/api/posts/${item.postId}`,
-              {
-                method: 'DELETE',
-              }
-            );
-            if (res.ok) {
-              item.removeFrom(this.page['element']);
-              this.page['children'].delete(item);
-            }
-          }
-        });
-      });
+      posts.forEach((post: any) => this.renderPost(post));
     } catch (err) {
       console.error('Failed to load posts from API:', err);
     }
@@ -163,7 +176,7 @@ class App {
     body: string;
     type: string;
   }) {
-    const res = await fetch('http://localhost:4000/api/posts', {
+    const res = await fetch(`${API_URL}/api/posts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(post),

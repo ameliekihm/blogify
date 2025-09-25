@@ -1,4 +1,5 @@
 import { BaseComponent, Component } from '../component.js';
+import { API_URL } from '../../config';
 
 export interface Composable {
   addChild(child: Component): void;
@@ -21,6 +22,7 @@ interface SectionContainer extends Component, Composable {
   muteChildren(state: 'mute' | 'unmute'): void;
   getBoundingRect(): DOMRect;
   onDropped(): void;
+  postId?: number;
 }
 
 export class PageItemComponent
@@ -59,6 +61,10 @@ export class PageItemComponent
     this.element.addEventListener('dragleave', (event: DragEvent) => {
       this.onDragLeave(event);
     });
+  }
+
+  get rootElement(): HTMLElement {
+    return this.element;
   }
 
   onDragStart(_: DragEvent) {
@@ -115,13 +121,20 @@ export class PageItemComponent
   getBoundingRect(): DOMRect {
     return this.element.getBoundingClientRect();
   }
+
+  updateContent(title: string, body: string) {
+    const titleElement = this.element.querySelector('h2') as HTMLElement;
+    const bodyElement = this.element.querySelector('p') as HTMLElement;
+    if (titleElement) titleElement.textContent = title;
+    if (bodyElement) bodyElement.textContent = body;
+  }
 }
 
 export class PageComponent
   extends BaseComponent<HTMLUListElement>
   implements Composable
 {
-  private children = new Set<SectionContainer>();
+  public children = new Set<SectionContainer>();
   private dropTarget?: SectionContainer;
   private dragTarget?: SectionContainer;
 
@@ -154,6 +167,7 @@ export class PageComponent
         this.dragTarget,
         dropY < srcElement.y ? 'beforebegin' : 'afterend'
       );
+      this.syncOrderWithServer();
     }
     this.dropTarget.onDropped();
   }
@@ -170,7 +184,7 @@ export class PageComponent
     this.children.add(item);
 
     item.setOnDragStateListener(
-      (target: SectionContainer, state: DragState) => {
+      (target: PageItemComponent, state: DragState) => {
         switch (state) {
           case 'start':
             this.dragTarget = target;
@@ -186,8 +200,6 @@ export class PageComponent
           case 'leave':
             this.dropTarget = undefined;
             break;
-          default:
-            throw new Error(`Unsupported State: ${state}`);
         }
       }
     );
@@ -199,5 +211,25 @@ export class PageComponent
     this.children.forEach((section: SectionContainer) => {
       section.muteChildren(state);
     });
+  }
+
+  private syncOrderWithServer() {
+    const order: number[] = [];
+    this.element.querySelectorAll('.page-item').forEach((el) => {
+      const item = Array.from(this.children).find(
+        (c) => (c as PageItemComponent).rootElement === el
+      ) as PageItemComponent;
+      if (item && item.postId) {
+        order.push(item.postId);
+      }
+    });
+
+    if (order.length > 0) {
+      fetch(`${API_URL}/api/posts/reorder`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order }),
+      });
+    }
   }
 }
