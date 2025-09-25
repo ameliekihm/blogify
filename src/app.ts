@@ -116,19 +116,28 @@ class App {
   }
 
   private openEditDialog(post: any, item: any) {
-    const dialog = new InputDialog('Update');
+    const dialog = new InputDialog('Done');
     let input: any;
+
     if (post.type === 'image' || post.type === 'video') {
       input = new MediaSectionInput();
-      (input as any).title = post.title;
-      (input as any).url = post.body;
+      const titleEl = input.element.querySelector('#title') as HTMLInputElement;
+      const urlEl = input.element.querySelector('#url') as HTMLInputElement;
+      if (titleEl) titleEl.value = post.title;
+      if (urlEl) urlEl.value = post.body;
     } else {
       input = new TextSectionInput();
-      (input as any).title = post.title;
-      (input as any).body = post.body;
+      const titleEl = input.element.querySelector('#title') as HTMLInputElement;
+      const bodyEl = input.element.querySelector(
+        '#body'
+      ) as HTMLTextAreaElement;
+      if (titleEl) titleEl.value = post.title;
+      if (bodyEl) bodyEl.value = post.body;
     }
+
     dialog.addChild(input);
     dialog.attachTo(this.dialogRoot);
+    dialog.setSubmitLabel('Done');
 
     dialog.setOnSubmitListener(async () => {
       const updatedPost = {

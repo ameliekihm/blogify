@@ -20,6 +20,7 @@ export class InputDialog
 {
   closeListener?: OnCloseListener;
   submitListener?: OnSubmitListener;
+  private submitBtn: HTMLButtonElement;
 
   constructor(label: string = 'Add') {
     super(`<dialog class="dialog">
@@ -31,17 +32,16 @@ export class InputDialog
             </dialog>`);
 
     const closeBtn = this.element.querySelector('.close')! as HTMLButtonElement;
-
     closeBtn.onclick = () => {
       this.closeListener && this.closeListener();
       this.element.remove();
     };
 
-    const submitBtn = this.element.querySelector(
+    this.submitBtn = this.element.querySelector(
       '.dialog__submit'
     )! as HTMLButtonElement;
 
-    submitBtn.onclick = () => {
+    this.submitBtn.onclick = () => {
       this.submitListener && this.submitListener();
     };
   }
@@ -57,5 +57,9 @@ export class InputDialog
   addChild(child: Component) {
     const body = this.element.querySelector('#dialog__body')! as HTMLElement;
     child.attachTo(body);
+  }
+
+  setSubmitLabel(label: string) {
+    this.submitBtn.textContent = label;
   }
 }
