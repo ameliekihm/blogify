@@ -115,7 +115,7 @@ class App {
     });
   }
 
-  private openEditDialog(post: any, item: any) {
+  private openEditDialog(post: any, item: PageItemComponent) {
     const dialog = new InputDialog('Done');
     let input: any;
 
@@ -151,9 +151,11 @@ class App {
           body: JSON.stringify(updatedPost),
         });
         const newPost = await res.json();
-        item.removeFrom(this.page['element']);
-        this.page['children'].delete(item);
-        this.renderPost(newPost);
+        post.title = newPost.title;
+        post.body = newPost.body;
+        if (item.updateContent) {
+          item.updateContent(newPost.title, newPost.body);
+        }
       } catch (err) {
         console.error('Failed to update post:', err);
       }

@@ -120,6 +120,13 @@ export class PageItemComponent
   getBoundingRect(): DOMRect {
     return this.element.getBoundingClientRect();
   }
+
+  updateContent(title: string, body: string) {
+    const titleElement = this.element.querySelector('h2') as HTMLElement;
+    const bodyElement = this.element.querySelector('p') as HTMLElement;
+    if (titleElement) titleElement.textContent = title;
+    if (bodyElement) bodyElement.textContent = body;
+  }
 }
 
 export class PageComponent
