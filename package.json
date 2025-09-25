@@ -4,7 +4,8 @@
   "description": "Blogify - TypeScript-based Single Page Application, built for Cloud Native & DevOps learning",
   "main": "dist/app.js",
   "scripts": {
-    "build": "tsc && cp index.html dist/ && cp -R style dist/ && cp -R assets dist/",
+    "build": "vite build",
+    "dev": "vite",
     "start": "npx serve dist",
     "clean": "rm -rf dist",
     "test": "echo \"No test specified\" && exit 0"
@@ -20,7 +21,8 @@
   "license": "MIT",
   "devDependencies": {
     "serve": "^14.2.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vite": "^5.0.0"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.0.1",

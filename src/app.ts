@@ -11,6 +11,7 @@ import { NoteComponent } from './components/page/item/note.js';
 import { TodoComponent } from './components/page/item/todo.js';
 import { PageComponent, PageItemComponent } from './components/page/page.js';
 import { Component } from './components/component.js';
+import { API_URL } from './config';
 
 type InputComponentConstructor<T = (MediaData | TextData) & Component> = {
   new (): T;
@@ -101,12 +102,9 @@ class App {
 
     item.setOnCloseListener(async () => {
       if (item.postId) {
-        const res = await fetch(
-          `http://localhost:4000/api/posts/${item.postId}`,
-          {
-            method: 'DELETE',
-          }
-        );
+        const res = await fetch(`${API_URL}/api/posts/${item.postId}`, {
+          method: 'DELETE',
+        });
         if (res.ok) {
           item.removeFrom(this.page['element']);
           this.page['children'].delete(item);
@@ -145,7 +143,7 @@ class App {
         body: (input as any).body ?? (input as any).url ?? '',
       };
       try {
-        const res = await fetch(`http://localhost:4000/api/posts/${post.id}`, {
+        const res = await fetch(`${API_URL}/api/posts/${post.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updatedPost),
@@ -165,7 +163,7 @@ class App {
 
   private async loadPostsFromAPI() {
     try {
-      const res = await fetch('http://localhost:4000/api/posts');
+      const res = await fetch(`${API_URL}/api/posts`);
       const posts = await res.json();
       posts.forEach((post: any) => this.renderPost(post));
     } catch (err) {
@@ -178,7 +176,7 @@ class App {
     body: string;
     type: string;
   }) {
-    const res = await fetch('http://localhost:4000/api/posts', {
+    const res = await fetch(`${API_URL}/api/posts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(post),

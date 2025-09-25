@@ -1,4 +1,5 @@
 import { BaseComponent, Component } from '../component.js';
+import { API_URL } from '../../config';
 
 export interface Composable {
   addChild(child: Component): void;
@@ -224,7 +225,7 @@ export class PageComponent
     });
 
     if (order.length > 0) {
-      fetch('http://localhost:4000/api/posts/reorder', {
+      fetch(`${API_URL}/api/posts/reorder`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ order }),
