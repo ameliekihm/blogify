@@ -6,6 +6,8 @@ services:
     container_name: blogify-backend
     ports:
       - '4000:4000'
+    volumes:
+      - ./data:/data
 
   frontend:
     build: .
