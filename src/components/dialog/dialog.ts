@@ -1,47 +1,35 @@
 import { BaseComponent, Component } from '../component.js';
-import { Composable } from '../page/page.js';
+export type { MediaData } from './input/media-input.js';
+export type { TextData } from './input/text-input.js';
 
 type OnCloseListener = () => void;
 type OnSubmitListener = () => void;
 
-export interface MediaData {
-  readonly title: string;
-  readonly url: string;
-}
+export class InputDialog extends BaseComponent<HTMLElement> {
+  private closeListener?: OnCloseListener;
+  private submitListener?: OnSubmitListener;
 
-export interface TextData {
-  readonly title: string;
-  readonly body: string;
-}
+  constructor(submitText: string = 'Add') {
+    super(`<section class="dialog">
+             <div class="dialog__container">
+               <button class="dialog__close">&times;</button>
+               <div id="dialog__body"></div>
+               <button class="dialog__submit">${submitText}</button>
+             </div>
+           </section>`);
 
-export class InputDialog
-  extends BaseComponent<HTMLElement>
-  implements Composable
-{
-  closeListener?: OnCloseListener;
-  submitListener?: OnSubmitListener;
-  private submitBtn: HTMLButtonElement;
-
-  constructor(label: string = 'Add') {
-    super(`<dialog class="dialog">
-                <div class="dialog__container">
-                    <button class="close">&times;</button>
-                    <div id="dialog__body"></div>
-                    <button class="button-common dialog__submit">${label}</button>
-                </div>
-            </dialog>`);
-
-    const closeBtn = this.element.querySelector('.close')! as HTMLButtonElement;
+    const closeBtn = this.element.querySelector(
+      '.dialog__close'
+    )! as HTMLButtonElement;
     closeBtn.onclick = () => {
+      this.removeFrom(document.body);
       this.closeListener && this.closeListener();
-      this.element.remove();
     };
 
-    this.submitBtn = this.element.querySelector(
+    const submitBtn = this.element.querySelector(
       '.dialog__submit'
     )! as HTMLButtonElement;
-
-    this.submitBtn.onclick = () => {
+    submitBtn.onclick = () => {
       this.submitListener && this.submitListener();
     };
   }
@@ -54,12 +42,15 @@ export class InputDialog
     this.submitListener = listener;
   }
 
+  setSubmitLabel(label: string) {
+    const submitBtn = this.element.querySelector(
+      '.dialog__submit'
+    )! as HTMLButtonElement;
+    submitBtn.textContent = label;
+  }
+
   addChild(child: Component) {
     const body = this.element.querySelector('#dialog__body')! as HTMLElement;
     child.attachTo(body);
-  }
-
-  setSubmitLabel(label: string) {
-    this.submitBtn.textContent = label;
   }
 }
