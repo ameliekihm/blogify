@@ -14,4 +14,4 @@ dist/
 
 data/
 cleanup-dev.sh
-
+test-client.js
