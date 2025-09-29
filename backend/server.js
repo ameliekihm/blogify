@@ -10,9 +10,7 @@ require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: '*' },
-});
+const io = new Server(server, { cors: { origin: '*' } });
 
 const PORT = 4000;
 const DATA_FILE = path.join(__dirname, '../data/posts.json');
@@ -68,7 +66,6 @@ app.post('/api/posts', (req, res) => {
 
   posts.push(newPost);
   savePosts();
-
   io.emit('post-added', newPost);
   res.status(201).json(newPost);
 });
@@ -95,14 +92,11 @@ app.delete('/api/posts/:id', (req, res) => {
 
   const deletedPost = posts.splice(index, 1)[0];
   savePosts();
-
   io.emit('post-deleted', deletedPost);
   res.json(deletedPost);
 });
 
 io.on('connection', (socket) => {
-  console.log(`✅ Client connected: ${socket.id}`);
-
   socket.on('cursor-move', (data) => {
     socket.broadcast.emit('cursor-move', data);
   });
@@ -119,8 +113,8 @@ io.on('connection', (socket) => {
     socket.broadcast.emit('post-editing-done', postId);
   });
 
-  socket.on('disconnect', () => {
-    console.log(`❌ Client disconnected: ${socket.id}`);
+  socket.on('post-typing', (data) => {
+    socket.broadcast.emit('post-typing', data);
   });
 });
 

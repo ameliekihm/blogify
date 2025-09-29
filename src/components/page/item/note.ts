@@ -2,6 +2,14 @@ import { BaseComponent } from '../../component';
 import { API_URL } from '../../../config';
 import socket from '../../../socket';
 
+function debounce<T extends (...args: any[]) => void>(fn: T, delay: number) {
+  let timer: ReturnType<typeof setTimeout>;
+  return (...args: Parameters<T>) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
 export class NoteComponent extends BaseComponent<HTMLElement> {
   private titleEl: HTMLElement;
   private bodyEl: HTMLElement;
@@ -46,6 +54,13 @@ export class NoteComponent extends BaseComponent<HTMLElement> {
         card?.classList.remove('editing');
       }
     });
+
+    socket.on('post-typing', (data: any) => {
+      if (data.id === this.postId && !this.editing) {
+        this.titleEl.textContent = data.title;
+        this.bodyEl.textContent = data.body;
+      }
+    });
   }
 
   private toggleEdit() {
@@ -56,6 +71,9 @@ export class NoteComponent extends BaseComponent<HTMLElement> {
     if (!this.editing) {
       this.titleEl.contentEditable = 'true';
       this.bodyEl.contentEditable = 'true';
+      const debouncedTyping = debounce(() => this.emitTyping(), 300);
+      this.titleEl.oninput = debouncedTyping;
+      this.bodyEl.oninput = debouncedTyping;
       card.classList.add('editing');
       this.editBtn.innerHTML = `<i class="fa-solid fa-square-check"></i>`;
       socket.emit('post-editing', this.postId);
@@ -63,6 +81,8 @@ export class NoteComponent extends BaseComponent<HTMLElement> {
     } else {
       this.titleEl.contentEditable = 'false';
       this.bodyEl.contentEditable = 'false';
+      this.titleEl.oninput = null;
+      this.bodyEl.oninput = null;
       card.classList.remove('editing');
       this.editBtn.innerHTML = `<i class="fa-solid fa-pen-to-square"></i>`;
       const updated = {
@@ -79,5 +99,14 @@ export class NoteComponent extends BaseComponent<HTMLElement> {
       socket.emit('post-editing-done', this.postId);
       this.editing = false;
     }
+  }
+
+  private emitTyping() {
+    if (!this.postId) return;
+    socket.emit('post-typing', {
+      id: this.postId,
+      title: this.titleEl.textContent,
+      body: this.bodyEl.textContent,
+    });
   }
 }
