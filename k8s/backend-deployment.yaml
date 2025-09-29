@@ -17,6 +17,11 @@ spec:
           image: 835175800383.dkr.ecr.us-east-1.amazonaws.com/blogify-backend:latest
           ports:
             - containerPort: 4000
+          env:
+            - name: REDIS_HOST
+              value: 'redis'
+            - name: REDIS_PORT
+              value: '6379'
           volumeMounts:
             - name: data
               mountPath: /data
