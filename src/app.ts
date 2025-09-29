@@ -31,7 +31,7 @@ class App {
     });
     this.socket.on('post-added', (post) => this.renderPost(post));
     this.socket.on('post-updated', (post) => this.updateRenderedPost(post));
-    this.socket.on('post-deleted', (postId) => this.removeRenderedPost(postId));
+    this.socket.on('post-deleted', (post) => this.removeRenderedPost(post.id));
     this.socket.on('post-editing', (postId: number) => {
       const item = Array.from(this.page['children']).find(
         (child: any) => child.postId === postId

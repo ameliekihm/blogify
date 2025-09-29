@@ -104,13 +104,19 @@ io.on('connection', (socket) => {
   console.log(`✅ Client connected: ${socket.id}`);
 
   socket.on('cursor-move', (data) => {
-    // { userId, position }
     socket.broadcast.emit('cursor-move', data);
   });
 
   socket.on('text-change', (data) => {
-    // { userId, content }
     socket.broadcast.emit('text-change', data);
+  });
+
+  socket.on('post-editing', (postId) => {
+    socket.broadcast.emit('post-editing', postId);
+  });
+
+  socket.on('post-editing-done', (postId) => {
+    socket.broadcast.emit('post-editing-done', postId);
   });
 
   socket.on('disconnect', () => {
@@ -119,5 +125,5 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
 });

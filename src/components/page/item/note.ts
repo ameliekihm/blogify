@@ -26,11 +26,30 @@ export class NoteComponent extends BaseComponent<HTMLElement> {
     this.bodyEl.textContent = body;
 
     this.editBtn.onclick = () => this.toggleEdit();
+
+    if (this.postId) {
+      this.element
+        .closest('.page-item')
+        ?.setAttribute('data-id', String(this.postId));
+    }
+
+    socket.on('post-editing', (id: number) => {
+      if (id === this.postId) {
+        const card = this.element.closest('.page-item') as HTMLElement;
+        card?.classList.add('editing');
+      }
+    });
+
+    socket.on('post-editing-done', (id: number) => {
+      if (id === this.postId) {
+        const card = this.element.closest('.page-item') as HTMLElement;
+        card?.classList.remove('editing');
+      }
+    });
   }
 
   private toggleEdit() {
     if (!this.postId) return;
-
     const card = this.element.closest('.page-item') as HTMLElement;
     if (!card) return;
 

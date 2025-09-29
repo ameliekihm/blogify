@@ -218,7 +218,7 @@ body {
 .close:hover,
 .close:focus,
 .dialog__close:hover {
-  transform: scale(1.8);
+  transform: scale(1.5);
   color: var(--shadow-color);
   text-decoration: none;
   cursor: pointer;
@@ -359,7 +359,7 @@ input[type='checkbox']:checked {
 }
 
 .edit-btn:hover {
-  transform: scale(1.4);
+  transform: scale(1.2);
 }
 
 .dialog__close {
