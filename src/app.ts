@@ -12,6 +12,7 @@ import { TodoComponent } from './components/page/item/todo.js';
 import { PageComponent, PageItemComponent } from './components/page/page.js';
 import { Component } from './components/component.js';
 import { API_URL } from './config';
+import { io, Socket } from 'socket.io-client';
 
 type InputComponentConstructor<T = (MediaData | TextData) & Component> = {
   new (): T;
@@ -19,11 +20,18 @@ type InputComponentConstructor<T = (MediaData | TextData) & Component> = {
 
 class App {
   private readonly page: PageComponent;
+  private socket: Socket;
 
   constructor(appRoot: HTMLElement, private dialogRoot: HTMLElement) {
     this.page = new PageComponent(PageItemComponent);
     this.page.attachTo(appRoot);
-
+    this.socket = io(API_URL, { transports: ['websocket'] });
+    this.socket.on('connect', () => {
+      console.log(`Connected to backend: ${this.socket.id}`);
+    });
+    this.socket.on('post-added', (post) => this.renderPost(post));
+    this.socket.on('post-updated', (post) => this.updateRenderedPost(post));
+    this.socket.on('post-deleted', (post) => this.removeRenderedPost(post.id));
     this.bindElementToDialog<MediaSectionInput>(
       '#new-image',
       MediaSectionInput,
@@ -44,7 +52,6 @@ class App {
       TextSectionInput,
       'todo'
     );
-
     this.loadPostsFromAPI();
   }
 
@@ -59,21 +66,18 @@ class App {
       const input = new InputComponent();
       dialog.addChild(input);
       dialog.attachTo(this.dialogRoot);
-
       dialog.setOnSubmitListener(async () => {
         const post = {
           title: (input as any).title,
           body: (input as any).body ?? (input as any).url ?? '',
           type,
         };
-
         try {
           const savedPost = await this.savePostToAPI(post);
-          this.renderPost(savedPost);
+          this.socket.emit('post-added', savedPost);
         } catch (err) {
           console.error('Failed to save post:', err);
         }
-
         dialog.removeFrom(this.dialogRoot);
       });
     });
@@ -90,16 +94,13 @@ class App {
     } else {
       section = new NoteComponent(post.title, post.body);
     }
-
     const item = this.page.addChild(section);
     item.postId = post.id;
-
     const editBtn = document.createElement('button');
     editBtn.className = 'edit-btn';
     editBtn.innerHTML = `<i class="fa-solid fa-pen-to-square"></i>`;
     editBtn.onclick = () => this.openEditDialog(post, item);
     item['element'].appendChild(editBtn);
-
     item.setOnCloseListener(async () => {
       if (item.postId) {
         const res = await fetch(`${API_URL}/api/posts/${item.postId}`, {
@@ -108,15 +109,34 @@ class App {
         if (res.ok) {
           item.removeFrom(this.page['element']);
           this.page['children'].delete(item);
+          this.socket.emit('post-deleted', post);
         }
       }
     });
   }
 
+  private updateRenderedPost(post: any) {
+    const item = Array.from(this.page['children']).find(
+      (child: any) => child.postId === post.id
+    ) as PageItemComponent | undefined;
+    if (item && item.updateContent) {
+      item.updateContent(post.title, post.body);
+    }
+  }
+
+  private removeRenderedPost(postId: number) {
+    const item = Array.from(this.page['children']).find(
+      (child: any) => child.postId === postId
+    ) as PageItemComponent | undefined;
+    if (item) {
+      item.removeFrom(this.page['element']);
+      this.page['children'].delete(item);
+    }
+  }
+
   private openEditDialog(post: any, item: PageItemComponent) {
     const dialog = new InputDialog('Done');
     let input: any;
-
     if (post.type === 'image' || post.type === 'video') {
       input = new MediaSectionInput();
       const titleEl = input.element.querySelector('#title') as HTMLInputElement;
@@ -132,11 +152,9 @@ class App {
       if (titleEl) titleEl.value = post.title;
       if (bodyEl) bodyEl.value = post.body;
     }
-
     dialog.addChild(input);
     dialog.attachTo(this.dialogRoot);
     dialog.setSubmitLabel('Done');
-
     dialog.setOnSubmitListener(async () => {
       const updatedPost = {
         title: (input as any).title,
@@ -154,6 +172,7 @@ class App {
         if (item.updateContent) {
           item.updateContent(newPost.title, newPost.body);
         }
+        this.socket.emit('post-updated', newPost);
       } catch (err) {
         console.error('Failed to update post:', err);
       }
