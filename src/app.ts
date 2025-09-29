@@ -31,7 +31,19 @@ class App {
     });
     this.socket.on('post-added', (post) => this.renderPost(post));
     this.socket.on('post-updated', (post) => this.updateRenderedPost(post));
-    this.socket.on('post-deleted', (post) => this.removeRenderedPost(post.id));
+    this.socket.on('post-deleted', (postId) => this.removeRenderedPost(postId));
+    this.socket.on('post-editing', (postId: number) => {
+      const item = Array.from(this.page['children']).find(
+        (child: any) => child.postId === postId
+      ) as PageItemComponent | undefined;
+      if (item) item['element'].classList.add('editing');
+    });
+    this.socket.on('post-editing-done', (postId: number) => {
+      const item = Array.from(this.page['children']).find(
+        (child: any) => child.postId === postId
+      ) as PageItemComponent | undefined;
+      if (item) item['element'].classList.remove('editing');
+    });
     this.bindElementToDialog<MediaSectionInput>(
       '#new-image',
       MediaSectionInput,
@@ -84,7 +96,7 @@ class App {
   }
 
   private renderPost(post: any) {
-    let section: Component;
+    let section: any;
     if (post.type === 'todo') {
       section = new TodoComponent(post.title, post.body, post.done, post.id);
     } else if (post.type === 'image') {
@@ -92,15 +104,27 @@ class App {
     } else if (post.type === 'video') {
       section = new VideoComponent(post.title, post.body);
     } else {
-      section = new NoteComponent(post.title, post.body);
+      section = new NoteComponent(post.title, post.body, post.id);
     }
     const item = this.page.addChild(section);
     item.postId = post.id;
-    const editBtn = document.createElement('button');
-    editBtn.className = 'edit-btn';
-    editBtn.innerHTML = `<i class="fa-solid fa-pen-to-square"></i>`;
-    editBtn.onclick = () => this.openEditDialog(post, item);
-    item['element'].appendChild(editBtn);
+
+    if (post.type === 'note' || post.type === 'todo') {
+      const enableEdit = (section as any).enableEdit;
+      if (enableEdit) {
+        const editBtn = item['element'].querySelector(
+          '.edit-btn'
+        ) as HTMLButtonElement;
+        if (editBtn) editBtn.onclick = () => (section as any).enableEdit();
+      }
+    } else {
+      const editBtn = document.createElement('button');
+      editBtn.className = 'edit-btn';
+      editBtn.innerHTML = `<i class="fa-solid fa-pen-to-square"></i>`;
+      editBtn.onclick = () => this.openEditDialog(post, item);
+      item['element'].appendChild(editBtn);
+    }
+
     item.setOnCloseListener(async () => {
       if (item.postId) {
         const res = await fetch(`${API_URL}/api/posts/${item.postId}`, {
@@ -109,7 +133,7 @@ class App {
         if (res.ok) {
           item.removeFrom(this.page['element']);
           this.page['children'].delete(item);
-          this.socket.emit('post-deleted', post);
+          this.socket.emit('post-deleted', post.id);
         }
       }
     });
@@ -137,28 +161,18 @@ class App {
   private openEditDialog(post: any, item: PageItemComponent) {
     const dialog = new InputDialog('Done');
     let input: any;
-    if (post.type === 'image' || post.type === 'video') {
-      input = new MediaSectionInput();
-      const titleEl = input.element.querySelector('#title') as HTMLInputElement;
-      const urlEl = input.element.querySelector('#url') as HTMLInputElement;
-      if (titleEl) titleEl.value = post.title;
-      if (urlEl) urlEl.value = post.body;
-    } else {
-      input = new TextSectionInput();
-      const titleEl = input.element.querySelector('#title') as HTMLInputElement;
-      const bodyEl = input.element.querySelector(
-        '#body'
-      ) as HTMLTextAreaElement;
-      if (titleEl) titleEl.value = post.title;
-      if (bodyEl) bodyEl.value = post.body;
-    }
+    input = new MediaSectionInput();
+    const titleEl = input.element.querySelector('#title') as HTMLInputElement;
+    const urlEl = input.element.querySelector('#url') as HTMLInputElement;
+    if (titleEl) titleEl.value = post.title;
+    if (urlEl) urlEl.value = post.body;
     dialog.addChild(input);
     dialog.attachTo(this.dialogRoot);
     dialog.setSubmitLabel('Done');
     dialog.setOnSubmitListener(async () => {
       const updatedPost = {
         title: (input as any).title,
-        body: (input as any).body ?? (input as any).url ?? '',
+        body: (input as any).url,
       };
       try {
         const res = await fetch(`${API_URL}/api/posts/${post.id}`, {
