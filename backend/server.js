@@ -40,7 +40,6 @@ function loadPosts() {
         nextId = Math.max(...posts.map((p) => p.id)) + 1;
       }
     } catch (err) {
-      console.error('Failed to parse posts.json:', err);
       posts = [];
     }
   }
@@ -60,10 +59,8 @@ app.post('/api/posts', (req, res) => {
   const { title, body, type } = req.body;
   if (!title) return res.status(400).json({ error: 'Title is required' });
   if (!type) return res.status(400).json({ error: 'Type is required' });
-
   const newPost = { id: nextId++, title, body, type };
   if (type === 'todo') newPost.done = false;
-
   posts.push(newPost);
   savePosts();
   io.emit('post-added', newPost);
@@ -74,12 +71,10 @@ app.patch('/api/posts/:id', (req, res) => {
   const id = parseInt(req.params.id);
   const post = posts.find((p) => p.id === id);
   if (!post) return res.status(404).json({ error: 'Post not found' });
-
   const { title, body, done } = req.body;
   if (typeof title === 'string') post.title = title;
   if (typeof body === 'string') post.body = body;
   if (typeof done === 'boolean') post.done = done;
-
   savePosts();
   io.emit('post-updated', post);
   res.json(post);
@@ -89,7 +84,6 @@ app.delete('/api/posts/:id', (req, res) => {
   const id = parseInt(req.params.id);
   const index = posts.findIndex((post) => post.id === id);
   if (index === -1) return res.status(404).json({ error: 'Post not found' });
-
   const deletedPost = posts.splice(index, 1)[0];
   savePosts();
   io.emit('post-deleted', deletedPost);
@@ -100,21 +94,20 @@ io.on('connection', (socket) => {
   socket.on('cursor-move', (data) => {
     socket.broadcast.emit('cursor-move', data);
   });
-
   socket.on('text-change', (data) => {
     socket.broadcast.emit('text-change', data);
   });
-
   socket.on('post-editing', (postId) => {
     socket.broadcast.emit('post-editing', postId);
   });
-
   socket.on('post-editing-done', (postId) => {
     socket.broadcast.emit('post-editing-done', postId);
   });
-
   socket.on('post-typing', (data) => {
     socket.broadcast.emit('post-typing', data);
+  });
+  socket.on('post-checked', (data) => {
+    socket.broadcast.emit('post-checked', data);
   });
 });
 

@@ -44,6 +44,17 @@ class App {
       ) as PageItemComponent | undefined;
       if (item) item['element'].classList.remove('editing');
     });
+    this.socket.on('post-checked', (data: any) => {
+      const item = Array.from(this.page['children']).find(
+        (child: any) => child.postId === data.id
+      ) as PageItemComponent | undefined;
+      if (item) {
+        const checkbox = item['element'].querySelector(
+          '.todo__check'
+        ) as HTMLInputElement;
+        if (checkbox) checkbox.checked = data.done;
+      }
+    });
     this.bindElementToDialog<MediaSectionInput>(
       '#new-image',
       MediaSectionInput,

@@ -69,6 +69,12 @@ export class TodoComponent extends BaseComponent<HTMLElement> {
         this.checkbox.checked = data.done;
       }
     });
+
+    socket.on('post-checked', (data: any) => {
+      if (data.id === this.postId && !this.editing) {
+        this.checkbox.checked = data.done;
+      }
+    });
   }
 
   private toggleEdit() {
@@ -123,7 +129,10 @@ export class TodoComponent extends BaseComponent<HTMLElement> {
       body: JSON.stringify(updated),
     })
       .then((r) => r.json())
-      .then((post) => socket.emit('post-updated', post));
+      .then((post) => {
+        socket.emit('post-updated', post);
+        socket.emit('post-checked', { id: post.id, done: post.done });
+      });
   }
 
   private emitTyping() {
