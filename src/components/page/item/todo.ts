@@ -1,57 +1,44 @@
 import { BaseComponent } from '../../component';
-import { API_URL } from '../../../config';
 import socket from '../../../socket';
 
-function debounce<T extends (...args: any[]) => void>(fn: T, delay: number) {
-  let timer: ReturnType<typeof setTimeout>;
-  return (...args: Parameters<T>) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), delay);
-  };
-}
+const API_URL = import.meta.env.VITE_API_URL;
 
 export class TodoComponent extends BaseComponent<HTMLElement> {
   private titleEl: HTMLElement;
-  private bodyEl: HTMLElement;
-  private checkbox: HTMLInputElement;
+  private listEl: HTMLElement;
   private editBtn: HTMLButtonElement;
   private postId?: number;
   private editing = false;
 
-  constructor(title: string, body: string, done: boolean, postId?: number) {
+  constructor(
+    title: string,
+    body: string,
+    _done: boolean,
+    postId?: number,
+    checks?: boolean[]
+  ) {
     super(`
       <div>
         <h2 class="todo__title"></h2>
-        <div class="todo__content">
-          <input type="checkbox" class="todo__check"/>
-          <p class="todo__body"></p>
-        </div>
+        <div class="todo__list"></div>
         <button class="edit-btn"><i class="fa-solid fa-pen-to-square"></i></button>
       </div>
     `);
     this.titleEl = this.element.querySelector('.todo__title')!;
-    this.bodyEl = this.element.querySelector('.todo__body')!;
-    this.checkbox = this.element.querySelector('.todo__check')!;
+    this.listEl = this.element.querySelector('.todo__list')!;
     this.editBtn = this.element.querySelector('.edit-btn')!;
     this.postId = postId;
 
     this.titleEl.innerHTML = title;
-    this.bodyEl.innerHTML = body;
-    this.checkbox.checked = done;
+    this.renderBody(body, checks);
 
-    this.checkbox.onchange = () => this.toggleDone();
     this.editBtn.onclick = () => this.toggleEdit();
-
-    if (this.postId) {
-      this.element
-        .closest('.page-item')
-        ?.setAttribute('data-id', String(this.postId));
-    }
 
     socket.on('post-editing', (id: number) => {
       if (id === this.postId) {
         const card = this.element.closest('.page-item') as HTMLElement;
         card?.classList.add('editing');
+        this.editBtn.innerHTML = `<i class="fa-solid fa-square-check"></i>`;
       }
     });
 
@@ -59,22 +46,86 @@ export class TodoComponent extends BaseComponent<HTMLElement> {
       if (id === this.postId) {
         const card = this.element.closest('.page-item') as HTMLElement;
         card?.classList.remove('editing');
+        this.editBtn.innerHTML = `<i class="fa-solid fa-pen-to-square"></i>`;
       }
     });
 
     socket.on('post-typing', (data: any) => {
       if (data.id === this.postId && !this.editing) {
         this.titleEl.innerHTML = data.title;
-        this.bodyEl.innerHTML = data.body;
-        this.checkbox.checked = data.done;
+        this.renderBody(data.body, data.checks);
       }
     });
 
-    socket.on('post-checked', (data: any) => {
+    socket.on('post-updated', (data: any) => {
       if (data.id === this.postId && !this.editing) {
-        this.checkbox.checked = data.done;
+        this.titleEl.innerHTML = data.title;
+        this.renderBody(data.body, data.checks);
       }
     });
+  }
+
+  private renderBody(body: any, checks?: boolean[]) {
+    this.listEl.innerHTML = '';
+    const text = typeof body === 'string' ? body : '';
+    const lines = text.split('\n');
+    lines.forEach((line, idx) => {
+      this.addRow(line, checks ? checks[idx] : false);
+    });
+  }
+
+  private addRow(text: string, checked: boolean) {
+    const row = document.createElement('div');
+    row.className = 'todo__row';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'todo__check';
+    checkbox.checked = checked;
+    const line = document.createElement('span');
+    line.className = 'todo__line';
+    line.contentEditable = String(this.editing);
+    line.innerText = text;
+    row.appendChild(checkbox);
+    row.appendChild(line);
+    this.listEl.appendChild(row);
+
+    line.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const newRow = this.addRow('', false);
+        const newLine = newRow.querySelector('.todo__line') as HTMLElement;
+        newLine.focus();
+        this.emitTyping();
+      }
+    });
+
+    line.addEventListener('input', () => {
+      this.emitTyping();
+    });
+
+    checkbox.onchange = () => {
+      if (!this.postId) return;
+      const newBody = Array.from(this.listEl.querySelectorAll('.todo__line'))
+        .map((line) => (line as HTMLElement).innerText)
+        .join('\n');
+      const checks = Array.from(
+        this.listEl.querySelectorAll('.todo__check')
+      ).map((c) => (c as HTMLInputElement).checked);
+      const updated = {
+        id: this.postId,
+        title: this.titleEl.innerText,
+        body: newBody,
+        checks,
+      };
+      socket.emit('post-updated', updated);
+      fetch(`${API_URL}/api/posts/${this.postId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      });
+    };
+
+    return row;
   }
 
   private toggleEdit() {
@@ -83,65 +134,58 @@ export class TodoComponent extends BaseComponent<HTMLElement> {
     if (!card) return;
 
     if (!this.editing) {
+      this.editing = true;
       this.titleEl.contentEditable = 'true';
-      this.bodyEl.contentEditable = 'true';
-      const debouncedTyping = debounce(() => this.emitTyping(), 300);
-      this.titleEl.oninput = debouncedTyping;
-      this.bodyEl.oninput = debouncedTyping;
+      this.listEl.querySelectorAll('.todo__line').forEach((line) => {
+        (line as HTMLElement).contentEditable = 'true';
+        line.addEventListener('input', () => this.emitTyping());
+      });
       card.classList.add('editing');
       this.editBtn.innerHTML = `<i class="fa-solid fa-square-check"></i>`;
       socket.emit('post-editing', this.postId);
-      this.editing = true;
     } else {
+      this.editing = false;
       this.titleEl.contentEditable = 'false';
-      this.bodyEl.contentEditable = 'false';
-      this.titleEl.oninput = null;
-      this.bodyEl.oninput = null;
-      card.classList.remove('editing');
-      this.editBtn.innerHTML = `<i class="fa-solid fa-pen-to-square"></i>`;
+      this.listEl.querySelectorAll('.todo__line').forEach((line) => {
+        (line as HTMLElement).contentEditable = 'false';
+      });
+      const newBody = Array.from(this.listEl.querySelectorAll('.todo__line'))
+        .map((line) => (line as HTMLElement).innerText)
+        .join('\n');
+      const checks = Array.from(
+        this.listEl.querySelectorAll('.todo__check')
+      ).map((c) => (c as HTMLInputElement).checked);
       const updated = {
-        title: this.titleEl.innerHTML || '',
-        body: this.bodyEl.innerHTML || '',
-        done: this.checkbox.checked,
+        id: this.postId,
+        title: this.titleEl.innerText,
+        body: newBody,
+        checks,
       };
+      socket.emit('post-updated', updated);
       fetch(`${API_URL}/api/posts/${this.postId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated),
-      })
-        .then((r) => r.json())
-        .then((post) => socket.emit('post-updated', post));
-      socket.emit('post-editing-done', this.postId);
-      this.editing = false;
-    }
-  }
-
-  private toggleDone() {
-    if (!this.postId) return;
-    const updated = {
-      title: this.titleEl.innerHTML || '',
-      body: this.bodyEl.innerHTML || '',
-      done: this.checkbox.checked,
-    };
-    fetch(`${API_URL}/api/posts/${this.postId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updated),
-    })
-      .then((r) => r.json())
-      .then((post) => {
-        socket.emit('post-updated', post);
-        socket.emit('post-checked', { id: post.id, done: post.done });
       });
+      socket.emit('post-editing-done', this.postId);
+      card.classList.remove('editing');
+      this.editBtn.innerHTML = `<i class="fa-solid fa-pen-to-square"></i>`;
+    }
   }
 
   private emitTyping() {
     if (!this.postId) return;
+    const newBody = Array.from(this.listEl.querySelectorAll('.todo__line'))
+      .map((line) => (line as HTMLElement).innerText)
+      .join('\n');
+    const checks = Array.from(this.listEl.querySelectorAll('.todo__check')).map(
+      (c) => (c as HTMLInputElement).checked
+    );
     socket.emit('post-typing', {
       id: this.postId,
-      title: this.titleEl.innerHTML,
-      body: this.bodyEl.innerHTML,
-      done: this.checkbox.checked,
+      title: this.titleEl.innerText,
+      body: newBody,
+      checks,
     });
   }
 }

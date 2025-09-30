@@ -60,7 +60,10 @@ app.post('/api/posts', (req, res) => {
   if (!title) return res.status(400).json({ error: 'Title is required' });
   if (!type) return res.status(400).json({ error: 'Type is required' });
   const newPost = { id: nextId++, title, body, type };
-  if (type === 'todo') newPost.done = false;
+  if (type === 'todo') {
+    newPost.done = false;
+    newPost.checks = [];
+  }
   posts.push(newPost);
   savePosts();
   io.emit('post-added', newPost);
@@ -71,9 +74,10 @@ app.patch('/api/posts/:id', (req, res) => {
   const id = parseInt(req.params.id);
   const post = posts.find((p) => p.id === id);
   if (!post) return res.status(404).json({ error: 'Post not found' });
-  const { title, body, done } = req.body;
+  const { title, body, done, checks } = req.body;
   if (typeof title === 'string') post.title = title;
   if (typeof body === 'string') post.body = body;
+  if (Array.isArray(checks)) post.checks = checks;
   if (typeof done === 'boolean') post.done = done;
   savePosts();
   io.emit('post-updated', post);
@@ -105,6 +109,17 @@ io.on('connection', (socket) => {
   });
   socket.on('post-typing', (data) => {
     socket.broadcast.emit('post-typing', data);
+  });
+  socket.on('post-updated', (data) => {
+    const post = posts.find((p) => p.id === data.id);
+    if (post) {
+      if (typeof data.title === 'string') post.title = data.title;
+      if (typeof data.body === 'string') post.body = data.body;
+      if (Array.isArray(data.checks)) post.checks = data.checks;
+      if (typeof data.done === 'boolean') post.done = data.done;
+      savePosts();
+      io.emit('post-updated', post);
+    }
   });
   socket.on('post-checked', (data) => {
     socket.broadcast.emit('post-checked', data);

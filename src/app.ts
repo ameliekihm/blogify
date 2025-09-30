@@ -109,7 +109,13 @@ class App {
   private renderPost(post: any) {
     let section: any;
     if (post.type === 'todo') {
-      section = new TodoComponent(post.title, post.body, post.done, post.id);
+      section = new TodoComponent(
+        post.title,
+        post.body,
+        post.done,
+        post.id,
+        post.checks
+      );
     } else if (post.type === 'image') {
       section = new ImageComponent(post.title, post.body);
     } else if (post.type === 'video') {

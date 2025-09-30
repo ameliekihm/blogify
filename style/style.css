@@ -405,24 +405,32 @@ input[type='checkbox']:checked {
   padding: 0;
 }
 
-.todo__body,
-.todo__body * {
-  font-size: 1.25rem;
-  font-family: 'Mukta', sans-serif;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  word-wrap: break-word;
-  white-space: pre-wrap;
-  color: var(--border-color);
-  font-weight: 300;
+.todo__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
   margin: 1em 0 0.5em 0;
-  padding: 0 0.5em 0.5em 0;
-  line-height: 1.4;
+  padding: 0 0.5em 0.5em 0.9em;
 }
 
-.todo__body div {
-  margin: 0;
-  padding: 0;
+.todo__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.todo__line {
+  flex: 1;
+  font-size: 1.25rem;
+  font-family: 'Mukta', sans-serif;
+  color: var(--border-color);
+  font-weight: 300;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.todo__line[contenteditable='true'] {
+  outline: none;
 }
 
 .note__title[contenteditable='true'],
