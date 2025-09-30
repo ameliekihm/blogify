@@ -35,8 +35,8 @@ export class TodoComponent extends BaseComponent<HTMLElement> {
     this.editBtn = this.element.querySelector('.edit-btn')!;
     this.postId = postId;
 
-    this.titleEl.textContent = title;
-    this.bodyEl.textContent = body;
+    this.titleEl.innerHTML = title;
+    this.bodyEl.innerHTML = body;
     this.checkbox.checked = done;
 
     this.checkbox.onchange = () => this.toggleDone();
@@ -64,8 +64,8 @@ export class TodoComponent extends BaseComponent<HTMLElement> {
 
     socket.on('post-typing', (data: any) => {
       if (data.id === this.postId && !this.editing) {
-        this.titleEl.textContent = data.title;
-        this.bodyEl.textContent = data.body;
+        this.titleEl.innerHTML = data.title;
+        this.bodyEl.innerHTML = data.body;
         this.checkbox.checked = data.done;
       }
     });
@@ -100,8 +100,8 @@ export class TodoComponent extends BaseComponent<HTMLElement> {
       card.classList.remove('editing');
       this.editBtn.innerHTML = `<i class="fa-solid fa-pen-to-square"></i>`;
       const updated = {
-        title: this.titleEl.textContent || '',
-        body: this.bodyEl.textContent || '',
+        title: this.titleEl.innerHTML || '',
+        body: this.bodyEl.innerHTML || '',
         done: this.checkbox.checked,
       };
       fetch(`${API_URL}/api/posts/${this.postId}`, {
@@ -119,8 +119,8 @@ export class TodoComponent extends BaseComponent<HTMLElement> {
   private toggleDone() {
     if (!this.postId) return;
     const updated = {
-      title: this.titleEl.textContent || '',
-      body: this.bodyEl.textContent || '',
+      title: this.titleEl.innerHTML || '',
+      body: this.bodyEl.innerHTML || '',
       done: this.checkbox.checked,
     };
     fetch(`${API_URL}/api/posts/${this.postId}`, {
@@ -139,8 +139,8 @@ export class TodoComponent extends BaseComponent<HTMLElement> {
     if (!this.postId) return;
     socket.emit('post-typing', {
       id: this.postId,
-      title: this.titleEl.textContent,
-      body: this.bodyEl.textContent,
+      title: this.titleEl.innerHTML,
+      body: this.bodyEl.innerHTML,
       done: this.checkbox.checked,
     });
   }

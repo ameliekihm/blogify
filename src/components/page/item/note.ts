@@ -30,8 +30,8 @@ export class NoteComponent extends BaseComponent<HTMLElement> {
     this.editBtn = this.element.querySelector('.edit-btn')!;
     this.postId = postId;
 
-    this.titleEl.textContent = title;
-    this.bodyEl.textContent = body;
+    this.titleEl.innerHTML = title;
+    this.bodyEl.innerHTML = body;
 
     this.editBtn.onclick = () => this.toggleEdit();
 
@@ -57,8 +57,8 @@ export class NoteComponent extends BaseComponent<HTMLElement> {
 
     socket.on('post-typing', (data: any) => {
       if (data.id === this.postId && !this.editing) {
-        this.titleEl.textContent = data.title;
-        this.bodyEl.textContent = data.body;
+        this.titleEl.innerHTML = data.title;
+        this.bodyEl.innerHTML = data.body;
       }
     });
   }
@@ -86,8 +86,8 @@ export class NoteComponent extends BaseComponent<HTMLElement> {
       card.classList.remove('editing');
       this.editBtn.innerHTML = `<i class="fa-solid fa-pen-to-square"></i>`;
       const updated = {
-        title: this.titleEl.textContent || '',
-        body: this.bodyEl.textContent || '',
+        title: this.titleEl.innerHTML || '',
+        body: this.bodyEl.innerHTML || '',
       };
       fetch(`${API_URL}/api/posts/${this.postId}`, {
         method: 'PATCH',
@@ -105,8 +105,8 @@ export class NoteComponent extends BaseComponent<HTMLElement> {
     if (!this.postId) return;
     socket.emit('post-typing', {
       id: this.postId,
-      title: this.titleEl.textContent,
-      body: this.bodyEl.textContent,
+      title: this.titleEl.innerHTML,
+      body: this.bodyEl.innerHTML,
     });
   }
 }

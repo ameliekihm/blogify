@@ -154,8 +154,15 @@ class App {
     const item = Array.from(this.page['children']).find(
       (child: any) => child.postId === post.id
     ) as PageItemComponent | undefined;
-    if (item && item.updateContent) {
-      item.updateContent(post.title, post.body);
+    if (item) {
+      const titleEl = item['element'].querySelector(
+        '.note__title, .todo__title'
+      ) as HTMLElement;
+      const bodyEl = item['element'].querySelector(
+        '.note__body, .todo__body'
+      ) as HTMLElement;
+      if (titleEl) titleEl.innerHTML = post.title;
+      if (bodyEl) bodyEl.innerHTML = post.body;
     }
   }
 
@@ -194,9 +201,14 @@ class App {
         const newPost = await res.json();
         post.title = newPost.title;
         post.body = newPost.body;
-        if (item.updateContent) {
-          item.updateContent(newPost.title, newPost.body);
-        }
+        const titleEl = item['element'].querySelector(
+          '.note__title, .todo__title'
+        ) as HTMLElement;
+        const bodyEl = item['element'].querySelector(
+          '.note__body, .todo__body'
+        ) as HTMLElement;
+        if (titleEl) titleEl.innerHTML = newPost.title;
+        if (bodyEl) bodyEl.innerHTML = newPost.body;
         this.socket.emit('post-updated', newPost);
       } catch (err) {
         console.error('Failed to update post:', err);

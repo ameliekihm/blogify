@@ -385,12 +385,14 @@ input[type='checkbox']:checked {
   padding-left: 0.5em;
 }
 
-.note__body {
+.note__body,
+.note__body * {
   font-size: 1.25rem;
   font-family: 'Mukta', sans-serif;
   overflow: hidden;
   text-overflow: ellipsis;
   word-wrap: break-word;
+  white-space: pre-wrap;
   color: var(--border-color);
   font-weight: 300;
   margin: 1em 0 0.5em 0;
@@ -398,17 +400,29 @@ input[type='checkbox']:checked {
   line-height: 1.4;
 }
 
-.todo__body {
+.note__body div {
+  margin: 0;
+  padding: 0;
+}
+
+.todo__body,
+.todo__body * {
   font-size: 1.25rem;
   font-family: 'Mukta', sans-serif;
   overflow: hidden;
   text-overflow: ellipsis;
   word-wrap: break-word;
+  white-space: pre-wrap;
   color: var(--border-color);
   font-weight: 300;
   margin: 1em 0 0.5em 0;
   padding: 0 0.5em 0.5em 0;
   line-height: 1.4;
+}
+
+.todo__body div {
+  margin: 0;
+  padding: 0;
 }
 
 .note__title[contenteditable='true'],
