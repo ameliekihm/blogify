@@ -3,6 +3,7 @@ import {
   MediaData,
   TextData,
 } from './components/dialog/dialog.js';
+import { initAuthHeader } from './components/auth-header';
 import { MediaSectionInput } from './components/dialog/input/media-input.js';
 import { TextSectionInput } from './components/dialog/input/text-input.js';
 import { ImageComponent } from './components/page/item/image.js';
@@ -13,6 +14,8 @@ import { PageComponent, PageItemComponent } from './components/page/page.js';
 import { Component } from './components/component.js';
 import { API_URL } from './config';
 import { io, Socket } from 'socket.io-client';
+
+initAuthHeader();
 
 type InputComponentConstructor<T = (MediaData | TextData) & Component> = {
   new (): T;

@@ -445,3 +445,27 @@ input[type='checkbox']:checked {
   box-shadow: 0 0 10px rgba(255, 0, 0, 0.5) !important;
   border-radius: 12px;
 }
+
+#auth-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#auth-header img {
+  border-radius: 50%;
+}
+
+#auth-header button {
+  background: #4a6cf7;
+  color: white;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+#auth-header button:hover {
+  background: #3652c3;
+}
