@@ -224,12 +224,10 @@ export class PageComponent
       }
     });
 
-    if (order.length > 0) {
-      fetch(`${API_URL}/api/posts/reorder`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ order }),
-      });
-    }
+    fetch(`${API_URL}/api/posts/reorder`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order }),
+    }).catch((err) => console.error('Failed to sync order:', err));
   }
 }

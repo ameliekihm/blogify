@@ -226,8 +226,19 @@ class App {
   private async loadPostsFromAPI() {
     try {
       const res = await fetch(`${API_URL}/api/posts`);
-      const posts = await res.json();
-      posts.forEach((post: any) => this.renderPost(post));
+      const data = await res.json();
+
+      const order = data.order;
+      const posts = data.posts;
+
+      if (Array.isArray(order)) {
+        order.forEach((id: number) => {
+          const post = posts.find((p: any) => p.id === id);
+          if (post) this.renderPost(post);
+        });
+      } else {
+        posts.forEach((post: any) => this.renderPost(post));
+      }
     } catch (err) {
       console.error('Failed to load posts from API:', err);
     }

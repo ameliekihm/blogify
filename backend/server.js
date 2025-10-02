@@ -29,30 +29,34 @@ app.use(cors());
 app.use(express.json());
 
 let posts = [];
+let order = [];
 let nextId = 1;
 
 function loadPosts() {
   if (fs.existsSync(DATA_FILE)) {
     const raw = fs.readFileSync(DATA_FILE, 'utf-8');
     try {
-      posts = JSON.parse(raw);
+      const data = JSON.parse(raw);
+      posts = data.posts || [];
+      order = data.order || posts.map((p) => p.id);
       if (posts.length > 0) {
         nextId = Math.max(...posts.map((p) => p.id)) + 1;
       }
     } catch (err) {
       posts = [];
+      order = [];
     }
   }
 }
 
 function savePosts() {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(posts, null, 2));
+  fs.writeFileSync(DATA_FILE, JSON.stringify({ posts, order }, null, 2));
 }
 
 loadPosts();
 
 app.get('/api/posts', (req, res) => {
-  res.json(posts);
+  res.json({ posts, order });
 });
 
 app.post('/api/posts', (req, res) => {
@@ -65,9 +69,25 @@ app.post('/api/posts', (req, res) => {
     newPost.checks = [];
   }
   posts.push(newPost);
+  order.push(newPost.id);
   savePosts();
   io.emit('post-added', newPost);
   res.status(201).json(newPost);
+});
+
+app.patch('/api/posts/reorder', (req, res) => {
+  const { order: newOrder } = req.body;
+  if (!Array.isArray(newOrder)) {
+    return res.status(400).json({ error: 'order must be an array' });
+  }
+  const valid = newOrder.every((id) => posts.find((p) => p.id === id));
+  if (!valid) {
+    return res.status(400).json({ error: 'Invalid postId in order' });
+  }
+  order = newOrder;
+  savePosts();
+  io.emit('posts-reordered', order);
+  res.json({ success: true, order });
 });
 
 app.patch('/api/posts/:id', (req, res) => {
@@ -89,6 +109,7 @@ app.delete('/api/posts/:id', (req, res) => {
   const index = posts.findIndex((post) => post.id === id);
   if (index === -1) return res.status(404).json({ error: 'Post not found' });
   const deletedPost = posts.splice(index, 1)[0];
+  order = order.filter((oid) => oid !== id);
   savePosts();
   io.emit('post-deleted', deletedPost);
   res.json(deletedPost);
