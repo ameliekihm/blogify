@@ -1,5 +1,6 @@
 import { BaseComponent, Component } from '../component.js';
 import { API_URL } from '../../config';
+import { io } from 'socket.io-client';
 
 export interface Composable {
   addChild(child: Component): void;
@@ -130,6 +131,8 @@ export class PageItemComponent
   }
 }
 
+const socket = io(API_URL);
+
 export class PageComponent
   extends BaseComponent<HTMLUListElement>
   implements Composable
@@ -146,6 +149,21 @@ export class PageComponent
     });
     this.element.addEventListener('drop', (event: DragEvent) => {
       this.onDrop(event);
+    });
+
+    socket.on('posts-reordered', (newOrder: number[]) => {
+      this.applyOrder(newOrder);
+    });
+  }
+
+  private applyOrder(newOrder: number[]) {
+    newOrder.forEach((id) => {
+      const item = Array.from(this.children).find(
+        (c) => (c as PageItemComponent).postId === id
+      ) as PageItemComponent;
+      if (item) {
+        this.element.appendChild(item.rootElement);
+      }
     });
   }
 

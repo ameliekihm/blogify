@@ -22,10 +22,9 @@ export class BaseComponent<T extends HTMLElement> implements Component {
   }
 
   removeFrom(parent: HTMLElement) {
-    if (parent != this.root.parentElement) {
-      throw new Error('Parent mismatched!');
+    if (this.root.parentElement === parent) {
+      parent.removeChild(this.root);
     }
-    parent.removeChild(this.root);
   }
 
   attach(component: Component, position?: InsertPosition) {
