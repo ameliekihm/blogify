@@ -218,7 +218,7 @@ body {
 .close:hover,
 .close:focus,
 .dialog__close:hover {
-  transform: scale(1.8);
+  transform: scale(1.5);
   color: var(--shadow-color);
   text-decoration: none;
   cursor: pointer;
@@ -234,7 +234,8 @@ body {
   position: relative;
   margin: 1.5em;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  justify-content: flex-start;
   align-items: flex-start;
   box-shadow: 1px 1px 8px rgba(0, 0, 0, 0.2);
   background: #efefefb7;
@@ -298,33 +299,15 @@ textarea::placeholder {
   padding: 0.5em;
 }
 
-.note__body {
-  font-size: 1.25rem;
-  margin-top: 0.2rem;
-  line-height: 1.4;
-  color: var(--border-color);
-  font-family: 'Mukta', sans-serif;
-  font-weight: 200;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  word-wrap: break-word;
-}
-
 /* -- TODO -- */
-.todo {
-  padding: 0.5em;
+.todo__content {
+  display: flex;
+  align-items: center;
 }
 
-.todo__list,
-.todo-label {
-  padding: 1em;
-  margin-top: 0.2rem;
-  align-items: center;
-  color: var(--border-color);
-  font-family: 'Mukta', sans-serif;
-  font-weight: 200;
-  font-size: 1.25rem;
-  word-wrap: break-word;
+.todo__check {
+  margin: 0 10px 0 20px;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
 
 input[type='checkbox'] {
@@ -335,7 +318,7 @@ input[type='checkbox'] {
 input[type='checkbox']:checked {
   width: 15px;
   height: 15px;
-  transform: scale(1.5);
+  transform: scale(1.4);
   accent-color: var(--title-color);
 }
 
@@ -376,7 +359,7 @@ input[type='checkbox']:checked {
 }
 
 .edit-btn:hover {
-  transform: scale(1.4);
+  transform: scale(1.2);
 }
 
 .dialog__close {
@@ -391,4 +374,74 @@ input[type='checkbox']:checked {
   border: none;
   cursor: pointer;
   transition: transform 0.3s ease, color 250ms ease;
+}
+
+.note__title,
+.todo__title {
+  color: var(--title-color);
+  font-family: 'Rajdhani', Roboto, Oxygen, sans-serif;
+  font-weight: 700;
+  margin: 0.3em 0 0.3em 0;
+  padding-left: 0.5em;
+}
+
+.note__body,
+.note__body * {
+  font-size: 1.25rem;
+  font-family: 'Mukta', sans-serif;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  color: var(--border-color);
+  font-weight: 300;
+  margin: 1em 0 0.5em 0;
+  padding: 0 0.5em 0.5em 0.9em;
+  line-height: 1.4;
+}
+
+.note__body div {
+  margin: 0;
+  padding: 0;
+}
+
+.todo__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5em;
+  margin: 1em 0 0.5em 0;
+  padding: 0 0.5em 0.5em 0.9em;
+}
+
+.todo__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+}
+
+.todo__line {
+  flex: 1;
+  font-size: 1.25rem;
+  font-family: 'Mukta', sans-serif;
+  color: var(--border-color);
+  font-weight: 300;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.todo__line[contenteditable='true'] {
+  outline: none;
+}
+
+.note__title[contenteditable='true'],
+.todo__title[contenteditable='true'],
+.note__body[contenteditable='true'],
+.todo__body[contenteditable='true'] {
+  outline: none;
+  border: none;
+}
+
+.page-item.editing {
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.5) !important;
+  border-radius: 12px;
 }

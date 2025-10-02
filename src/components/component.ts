@@ -5,27 +5,29 @@ export interface Component {
 }
 
 export class BaseComponent<T extends HTMLElement> implements Component {
-  protected readonly element: T;
+  protected readonly root: T;
 
   constructor(htmlString: string) {
     const template = document.createElement('template');
     template.innerHTML = htmlString;
-    this.element = template.content.firstElementChild! as T;
+    this.root = template.content.firstElementChild! as T;
+  }
+
+  get element(): T {
+    return this.root;
   }
 
   attachTo(parent: HTMLElement, position: InsertPosition = 'afterbegin') {
-    parent.insertAdjacentElement(position, this.element);
+    parent.insertAdjacentElement(position, this.root);
   }
 
   removeFrom(parent: HTMLElement) {
-    if (parent != this.element.parentElement) {
-      throw new Error('Parent mismatched!');
+    if (this.root.parentElement === parent) {
+      parent.removeChild(this.root);
     }
-
-    parent.removeChild(this.element);
   }
 
   attach(component: Component, position?: InsertPosition) {
-    component.attachTo(this.element, position);
+    component.attachTo(this.root, position);
   }
 }

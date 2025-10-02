@@ -12,6 +12,7 @@ import { TodoComponent } from './components/page/item/todo.js';
 import { PageComponent, PageItemComponent } from './components/page/page.js';
 import { Component } from './components/component.js';
 import { API_URL } from './config';
+import { io, Socket } from 'socket.io-client';
 
 type InputComponentConstructor<T = (MediaData | TextData) & Component> = {
   new (): T;
@@ -19,11 +20,41 @@ type InputComponentConstructor<T = (MediaData | TextData) & Component> = {
 
 class App {
   private readonly page: PageComponent;
+  private socket: Socket;
 
   constructor(appRoot: HTMLElement, private dialogRoot: HTMLElement) {
     this.page = new PageComponent(PageItemComponent);
     this.page.attachTo(appRoot);
-
+    this.socket = io(API_URL, { transports: ['websocket'] });
+    this.socket.on('connect', () => {
+      console.log(`Connected to backend: ${this.socket.id}`);
+    });
+    this.socket.on('post-added', (post) => this.renderPost(post));
+    this.socket.on('post-updated', (post) => this.updateRenderedPost(post));
+    this.socket.on('post-deleted', (post) => this.removeRenderedPost(post.id));
+    this.socket.on('post-editing', (postId: number) => {
+      const item = Array.from(this.page['children']).find(
+        (child: any) => child.postId === postId
+      ) as PageItemComponent | undefined;
+      if (item) item['element'].classList.add('editing');
+    });
+    this.socket.on('post-editing-done', (postId: number) => {
+      const item = Array.from(this.page['children']).find(
+        (child: any) => child.postId === postId
+      ) as PageItemComponent | undefined;
+      if (item) item['element'].classList.remove('editing');
+    });
+    this.socket.on('post-checked', (data: any) => {
+      const item = Array.from(this.page['children']).find(
+        (child: any) => child.postId === data.id
+      ) as PageItemComponent | undefined;
+      if (item) {
+        const checkbox = item['element'].querySelector(
+          '.todo__check'
+        ) as HTMLInputElement;
+        if (checkbox) checkbox.checked = data.done;
+      }
+    });
     this.bindElementToDialog<MediaSectionInput>(
       '#new-image',
       MediaSectionInput,
@@ -44,7 +75,6 @@ class App {
       TextSectionInput,
       'todo'
     );
-
     this.loadPostsFromAPI();
   }
 
@@ -59,46 +89,58 @@ class App {
       const input = new InputComponent();
       dialog.addChild(input);
       dialog.attachTo(this.dialogRoot);
-
       dialog.setOnSubmitListener(async () => {
         const post = {
           title: (input as any).title,
           body: (input as any).body ?? (input as any).url ?? '',
           type,
         };
-
         try {
           const savedPost = await this.savePostToAPI(post);
-          this.renderPost(savedPost);
+          this.socket.emit('post-added', savedPost);
         } catch (err) {
           console.error('Failed to save post:', err);
         }
-
         dialog.removeFrom(this.dialogRoot);
       });
     });
   }
 
   private renderPost(post: any) {
-    let section: Component;
+    let section: any;
     if (post.type === 'todo') {
-      section = new TodoComponent(post.title, post.body, post.done, post.id);
+      section = new TodoComponent(
+        post.title,
+        post.body,
+        post.done,
+        post.id,
+        post.checks
+      );
     } else if (post.type === 'image') {
       section = new ImageComponent(post.title, post.body);
     } else if (post.type === 'video') {
       section = new VideoComponent(post.title, post.body);
     } else {
-      section = new NoteComponent(post.title, post.body);
+      section = new NoteComponent(post.title, post.body, post.id);
     }
-
     const item = this.page.addChild(section);
     item.postId = post.id;
 
-    const editBtn = document.createElement('button');
-    editBtn.className = 'edit-btn';
-    editBtn.innerHTML = `<i class="fa-solid fa-pen-to-square"></i>`;
-    editBtn.onclick = () => this.openEditDialog(post, item);
-    item['element'].appendChild(editBtn);
+    if (post.type === 'note' || post.type === 'todo') {
+      const enableEdit = (section as any).enableEdit;
+      if (enableEdit) {
+        const editBtn = item['element'].querySelector(
+          '.edit-btn'
+        ) as HTMLButtonElement;
+        if (editBtn) editBtn.onclick = () => (section as any).enableEdit();
+      }
+    } else {
+      const editBtn = document.createElement('button');
+      editBtn.className = 'edit-btn';
+      editBtn.innerHTML = `<i class="fa-solid fa-pen-to-square"></i>`;
+      editBtn.onclick = () => this.openEditDialog(post, item);
+      item['element'].appendChild(editBtn);
+    }
 
     item.setOnCloseListener(async () => {
       if (item.postId) {
@@ -108,39 +150,53 @@ class App {
         if (res.ok) {
           item.removeFrom(this.page['element']);
           this.page['children'].delete(item);
+          this.socket.emit('post-deleted', post.id);
         }
       }
     });
   }
 
+  private updateRenderedPost(post: any) {
+    const item = Array.from(this.page['children']).find(
+      (child: any) => child.postId === post.id
+    ) as PageItemComponent | undefined;
+    if (item) {
+      const titleEl = item['element'].querySelector(
+        '.note__title, .todo__title'
+      ) as HTMLElement;
+      const bodyEl = item['element'].querySelector(
+        '.note__body, .todo__body'
+      ) as HTMLElement;
+      if (titleEl) titleEl.innerHTML = post.title;
+      if (bodyEl) bodyEl.innerHTML = post.body;
+    }
+  }
+
+  private removeRenderedPost(postId: number) {
+    const item = Array.from(this.page['children']).find(
+      (child: any) => child.postId === postId
+    ) as PageItemComponent | undefined;
+    if (item) {
+      item.removeFrom(this.page['element']);
+      this.page['children'].delete(item);
+    }
+  }
+
   private openEditDialog(post: any, item: PageItemComponent) {
     const dialog = new InputDialog('Done');
     let input: any;
-
-    if (post.type === 'image' || post.type === 'video') {
-      input = new MediaSectionInput();
-      const titleEl = input.element.querySelector('#title') as HTMLInputElement;
-      const urlEl = input.element.querySelector('#url') as HTMLInputElement;
-      if (titleEl) titleEl.value = post.title;
-      if (urlEl) urlEl.value = post.body;
-    } else {
-      input = new TextSectionInput();
-      const titleEl = input.element.querySelector('#title') as HTMLInputElement;
-      const bodyEl = input.element.querySelector(
-        '#body'
-      ) as HTMLTextAreaElement;
-      if (titleEl) titleEl.value = post.title;
-      if (bodyEl) bodyEl.value = post.body;
-    }
-
+    input = new MediaSectionInput();
+    const titleEl = input.element.querySelector('#title') as HTMLInputElement;
+    const urlEl = input.element.querySelector('#url') as HTMLInputElement;
+    if (titleEl) titleEl.value = post.title;
+    if (urlEl) urlEl.value = post.body;
     dialog.addChild(input);
     dialog.attachTo(this.dialogRoot);
     dialog.setSubmitLabel('Done');
-
     dialog.setOnSubmitListener(async () => {
       const updatedPost = {
         title: (input as any).title,
-        body: (input as any).body ?? (input as any).url ?? '',
+        body: (input as any).url,
       };
       try {
         const res = await fetch(`${API_URL}/api/posts/${post.id}`, {
@@ -151,9 +207,15 @@ class App {
         const newPost = await res.json();
         post.title = newPost.title;
         post.body = newPost.body;
-        if (item.updateContent) {
-          item.updateContent(newPost.title, newPost.body);
-        }
+        const titleEl = item['element'].querySelector(
+          '.note__title, .todo__title'
+        ) as HTMLElement;
+        const bodyEl = item['element'].querySelector(
+          '.note__body, .todo__body'
+        ) as HTMLElement;
+        if (titleEl) titleEl.innerHTML = newPost.title;
+        if (bodyEl) bodyEl.innerHTML = newPost.body;
+        this.socket.emit('post-updated', newPost);
       } catch (err) {
         console.error('Failed to update post:', err);
       }
@@ -164,8 +226,19 @@ class App {
   private async loadPostsFromAPI() {
     try {
       const res = await fetch(`${API_URL}/api/posts`);
-      const posts = await res.json();
-      posts.forEach((post: any) => this.renderPost(post));
+      const data = await res.json();
+
+      const order = data.order;
+      const posts = data.posts;
+
+      if (Array.isArray(order)) {
+        order.forEach((id: number) => {
+          const post = posts.find((p: any) => p.id === id);
+          if (post) this.renderPost(post);
+        });
+      } else {
+        posts.forEach((post: any) => this.renderPost(post));
+      }
     } catch (err) {
       console.error('Failed to load posts from API:', err);
     }

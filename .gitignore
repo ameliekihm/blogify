@@ -13,4 +13,5 @@ yarn-error.log*
 dist/
 
 data/
-
+cleanup-dev.sh
+test-client.js
