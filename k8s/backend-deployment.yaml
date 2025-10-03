@@ -22,6 +22,11 @@ spec:
               value: 'redis'
             - name: REDIS_PORT
               value: '6379'
+          envFrom:
+            - secretRef:
+                name: blogify-secret
+            - configMapRef:
+                name: blogify-config
           volumeMounts:
             - name: data
               mountPath: /data

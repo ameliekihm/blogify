@@ -21,3 +21,4 @@ backend/package-lock.json
 .DS_Store
 */.DS_Store
 
+k8s/secret.yaml

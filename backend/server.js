@@ -20,7 +20,37 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:5173',
+  'http://localhost:8080',
+].filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS: ' + origin));
+      }
+    },
+    credentials: true,
+  })
+);
+
+const io = new Server(server, {
+  cors: {
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS for socket.io: ' + origin));
+      }
+    },
+    credentials: true,
+  },
+});
 
 const PORT = 4000;
 const DATA_FILE = path.join(__dirname, '../data/posts.json');
@@ -35,12 +65,11 @@ Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
   io.adapter(createAdapter(pubClient, subClient));
 });
 
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
 app.use(express.json());
 
 app.use(
   session({
-    secret: process.env.JWT_SECRET,
+    secret: process.env.JWT_SECRET || 'dev-secret',
     resave: false,
     saveUninitialized: true,
   })
@@ -53,7 +82,9 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: 'http://localhost:4000/auth/google/callback',
+      callbackURL:
+        process.env.GOOGLE_CALLBACK_URL ||
+        'http://localhost:4000/auth/google/callback',
     },
     (accessToken, refreshToken, profile, done) => {
       const user = {
@@ -87,7 +118,8 @@ app.get(
     const token = jwt.sign(req.user, process.env.JWT_SECRET, {
       expiresIn: '1h',
     });
-    res.redirect(`http://localhost:5173?token=${token}`);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    res.redirect(`${frontendUrl}?token=${token}`);
   }
 );
 
