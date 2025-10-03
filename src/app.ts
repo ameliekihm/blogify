@@ -141,7 +141,15 @@ class App {
       const editBtn = document.createElement('button');
       editBtn.className = 'edit-btn';
       editBtn.innerHTML = `<i class="fa-solid fa-pen-to-square"></i>`;
-      editBtn.onclick = () => this.openEditDialog(post, item);
+      editBtn.onclick = () => {
+        if (!(window as any).currentUser) {
+          import('./components/page/popup').then(({ showPopup }) => {
+            showPopup('Log in to start editing');
+          });
+          return;
+        }
+        this.openEditDialog(post, item);
+      };
       item['element'].appendChild(editBtn);
     }
 
