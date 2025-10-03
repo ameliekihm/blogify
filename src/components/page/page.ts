@@ -1,6 +1,8 @@
 import { BaseComponent, Component } from '../component.js';
 import { API_URL } from '../../config';
 import { io } from 'socket.io-client';
+import { getCurrentUser } from '../../auth/auth';
+import { showPopup } from './popup';
 
 export interface Composable {
   addChild(child: Component): void;
@@ -43,7 +45,12 @@ export class PageItemComponent
           </li>`);
 
     const closeBtn = this.element.querySelector('.close')! as HTMLButtonElement;
-    closeBtn.onclick = () => {
+    closeBtn.onclick = async () => {
+      const user = await getCurrentUser();
+      if (!user) {
+        showPopup('Log in to delete posts');
+        return;
+      }
       this.closeListener && this.closeListener();
     };
 
