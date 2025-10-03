@@ -190,22 +190,38 @@ app.delete('/api/posts/:id', (req, res) => {
   res.json(deletedPost);
 });
 
+const editingUsers = new Map();
+
 io.on('connection', (socket) => {
   socket.on('cursor-move', (data) =>
     socket.broadcast.emit('cursor-move', data)
   );
+
   socket.on('text-change', (data) =>
     socket.broadcast.emit('text-change', data)
   );
-  socket.on('post-editing', (postId) =>
-    socket.broadcast.emit('post-editing', postId)
-  );
-  socket.on('post-editing-done', (postId) =>
-    socket.broadcast.emit('post-editing-done', postId)
-  );
+
+  socket.on('post-editing', (data) => {
+    if (!editingUsers.has(data.id)) editingUsers.set(data.id, new Map());
+    const map = editingUsers.get(data.id);
+    map.set(socket.id, data.user);
+    io.emit('post-editing', { ...data, socketId: socket.id });
+  });
+
+  socket.on('post-editing-done', (data) => {
+    if (editingUsers.has(data.id)) {
+      const map = editingUsers.get(data.id);
+      const user = map.get(socket.id);
+      map.delete(socket.id);
+      if (map.size === 0) editingUsers.delete(data.id);
+      io.emit('post-editing-done', { id: data.id, user, socketId: socket.id });
+    }
+  });
+
   socket.on('post-typing', (data) =>
     socket.broadcast.emit('post-typing', data)
   );
+
   socket.on('post-updated', (data) => {
     const post = posts.find((p) => p.id === data.id);
     if (post) {
@@ -217,9 +233,27 @@ io.on('connection', (socket) => {
       io.emit('post-updated', post);
     }
   });
+
   socket.on('post-checked', (data) =>
     socket.broadcast.emit('post-checked', data)
   );
+
+  socket.on('disconnect', () => {
+    for (const [postId, map] of editingUsers.entries()) {
+      if (map.has(socket.id)) {
+        const user = map.get(socket.id);
+        map.delete(socket.id);
+        io.emit('post-editing-done', {
+          id: Number(postId),
+          user,
+          socketId: socket.id,
+        });
+      }
+      if (map.size === 0) {
+        editingUsers.delete(postId);
+      }
+    }
+  });
 });
 
 server.listen(PORT, () => {

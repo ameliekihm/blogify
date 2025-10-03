@@ -515,3 +515,35 @@ input[type='checkbox']:checked {
   font-size: 1.2rem;
   margin-bottom: 0.3em;
 }
+
+.editing-label {
+  margin-left: 8px;
+  font-size: 0.85rem;
+  color: red;
+  font-style: italic;
+}
+
+.editing-badges {
+  position: absolute;
+  top: 8px;
+  right: 40px;
+  display: flex;
+  gap: 4px;
+}
+
+.badge-circle {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: var(--black);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  cursor: default;
+}
+
+.badge-circle.more {
+  background: #999;
+}

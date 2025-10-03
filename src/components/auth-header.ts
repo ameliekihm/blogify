@@ -4,6 +4,7 @@ import {
   saveTokenFromURL,
   getCurrentUser,
 } from '../auth/auth';
+import socket from '../socket';
 
 export async function initAuthHeader() {
   saveTokenFromURL();
@@ -13,28 +14,91 @@ export async function initAuthHeader() {
   if (!header) return;
 
   if (user) {
-    header.innerHTML = `
-      <button id="logout-btn">Logout</button>
-      <div class="user-info">
-        <img src="${user.photo}" width="32" height="32" />
-        <span>${user.firstName}</span>
-      </div>
-    `;
-    document.querySelector('#logout-btn')?.addEventListener('click', logout);
-  } else {
-    header.innerHTML = `
-  <button id="login-btn">Login</button>
-  <div class="user-info">
-    <img src="/assets/default-avatar.jpg" width="32" height="32" />
-    <div class="guest-labels">
-      <span class="guest-name">Guest</span>
-      <small>(viewer)</small>
-    </div>
-  </div>
-`;
+    (window as any).currentUser = {
+      name: user.firstName,
+      photo: user.photo,
+    };
 
-    document
-      .querySelector('#login-btn')
-      ?.addEventListener('click', loginWithGoogle);
+    header.innerHTML = '';
+
+    const logoutBtn = document.createElement('button');
+    logoutBtn.id = 'logout-btn';
+    logoutBtn.textContent = 'Logout';
+
+    const userInfo = document.createElement('div');
+    userInfo.className = 'user-info';
+
+    const img = document.createElement('img');
+    img.src = user.photo || '/assets/default-avatar.jpg';
+    img.width = 32;
+    img.height = 32;
+    img.onerror = () => {
+      img.src = '/assets/default-avatar.jpg';
+    };
+
+    const span = document.createElement('span');
+    span.textContent = user.firstName;
+
+    userInfo.appendChild(img);
+    userInfo.appendChild(span);
+
+    header.appendChild(logoutBtn);
+    header.appendChild(userInfo);
+
+    logoutBtn.addEventListener('click', () => {
+      const editingPosts: Set<number> =
+        (window as any).currentEditingPosts || new Set();
+      editingPosts.forEach((postId) => {
+        socket.emit('post-editing-done', {
+          id: postId,
+          user: (window as any).currentUser || {
+            name: 'Guest',
+            photo: '/assets/default-avatar.jpg',
+          },
+        });
+      });
+      (window as any).currentEditingPosts = new Set();
+
+      logout();
+      (window as any).currentUser = null;
+      console.log('logout, currentUser=', (window as any).currentUser);
+    });
+  } else {
+    (window as any).currentUser = null;
+
+    header.innerHTML = '';
+
+    const loginBtn = document.createElement('button');
+    loginBtn.id = 'login-btn';
+    loginBtn.textContent = 'Login';
+
+    const userInfo = document.createElement('div');
+    userInfo.className = 'user-info';
+
+    const img = document.createElement('img');
+    img.src = '/assets/default-avatar.jpg';
+    img.width = 32;
+    img.height = 32;
+
+    const labels = document.createElement('div');
+    labels.className = 'guest-labels';
+
+    const span = document.createElement('span');
+    span.className = 'guest-name';
+    span.textContent = 'Guest';
+
+    const small = document.createElement('small');
+    small.textContent = '(viewer)';
+
+    labels.appendChild(span);
+    labels.appendChild(small);
+
+    userInfo.appendChild(img);
+    userInfo.appendChild(labels);
+
+    header.appendChild(loginBtn);
+    header.appendChild(userInfo);
+
+    loginBtn.addEventListener('click', loginWithGoogle);
   }
 }
