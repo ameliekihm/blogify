@@ -3,6 +3,7 @@ import {
   MediaData,
   TextData,
 } from './components/dialog/dialog.js';
+import { initAuthHeader } from './components/auth-header';
 import { MediaSectionInput } from './components/dialog/input/media-input.js';
 import { TextSectionInput } from './components/dialog/input/text-input.js';
 import { ImageComponent } from './components/page/item/image.js';
@@ -13,6 +14,10 @@ import { PageComponent, PageItemComponent } from './components/page/page.js';
 import { Component } from './components/component.js';
 import { API_URL } from './config';
 import { io, Socket } from 'socket.io-client';
+import { showPopup } from './components/page/popup';
+import { getCurrentUser } from './auth/auth';
+
+initAuthHeader();
 
 type InputComponentConstructor<T = (MediaData | TextData) & Component> = {
   new (): T;
@@ -84,7 +89,13 @@ class App {
     type: string
   ) {
     const element = document.querySelector(selector)! as HTMLButtonElement;
-    element.addEventListener('click', () => {
+    element.addEventListener('click', async () => {
+      const currentUser = await getCurrentUser();
+      if (!currentUser) {
+        showPopup('Log in to create your Blogify post');
+        return;
+      }
+
       const dialog = new InputDialog('Add');
       const input = new InputComponent();
       dialog.addChild(input);
@@ -138,7 +149,15 @@ class App {
       const editBtn = document.createElement('button');
       editBtn.className = 'edit-btn';
       editBtn.innerHTML = `<i class="fa-solid fa-pen-to-square"></i>`;
-      editBtn.onclick = () => this.openEditDialog(post, item);
+      editBtn.onclick = () => {
+        if (!(window as any).currentUser) {
+          import('./components/page/popup').then(({ showPopup }) => {
+            showPopup('Log in to start editing');
+          });
+          return;
+        }
+        this.openEditDialog(post, item);
+      };
       item['element'].appendChild(editBtn);
     }
 

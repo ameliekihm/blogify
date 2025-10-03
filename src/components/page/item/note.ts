@@ -1,6 +1,25 @@
 import { BaseComponent } from '../../component';
 import { API_URL } from '../../../config';
 import socket from '../../../socket';
+import { showPopup } from '../popup';
+
+const userColors = new Map<string, string>();
+const palette = [
+  '#f9b9b2ff',
+  '#badef7ff',
+  '#c6e9d4ff',
+  '#e5c9f0ff',
+  '#f5e3c6ff',
+  '#bee8dfff',
+];
+
+function getUserColor(userId: string) {
+  if (!userColors.has(userId)) {
+    const color = palette[Math.floor(Math.random() * palette.length)];
+    userColors.set(userId, color);
+  }
+  return userColors.get(userId)!;
+}
 
 function debounce<T extends (...args: any[]) => void>(fn: T, delay: number) {
   let timer: ReturnType<typeof setTimeout>;
@@ -16,6 +35,8 @@ export class NoteComponent extends BaseComponent<HTMLElement> {
   private editBtn: HTMLButtonElement;
   private postId?: number;
   private editing = false;
+  private editingUsers = new Map<string, any>();
+  private badgesEl?: HTMLElement;
 
   constructor(title: string, body: string, postId?: number) {
     super(`
@@ -41,17 +62,21 @@ export class NoteComponent extends BaseComponent<HTMLElement> {
         ?.setAttribute('data-id', String(this.postId));
     }
 
-    socket.on('post-editing', (id: number) => {
-      if (id === this.postId) {
+    socket.on('post-editing', (data: any) => {
+      if (data.id === this.postId) {
         const card = this.element.closest('.page-item') as HTMLElement;
         card?.classList.add('editing');
+        this.editingUsers.set(data.socketId, data.user);
+        this.updateBadges();
       }
     });
 
-    socket.on('post-editing-done', (id: number) => {
-      if (id === this.postId) {
+    socket.on('post-editing-done', (data: any) => {
+      if (data.id === this.postId) {
         const card = this.element.closest('.page-item') as HTMLElement;
         card?.classList.remove('editing');
+        this.editingUsers.delete(data.socketId);
+        this.updateBadges();
       }
     });
 
@@ -68,6 +93,12 @@ export class NoteComponent extends BaseComponent<HTMLElement> {
     const card = this.element.closest('.page-item') as HTMLElement;
     if (!card) return;
 
+    const currentUser = (window as any).currentUser;
+    if (!currentUser) {
+      showPopup('Log in to start editing');
+      return;
+    }
+
     if (!this.editing) {
       this.titleEl.contentEditable = 'true';
       this.bodyEl.contentEditable = 'true';
@@ -75,8 +106,18 @@ export class NoteComponent extends BaseComponent<HTMLElement> {
       this.titleEl.oninput = debouncedTyping;
       this.bodyEl.oninput = debouncedTyping;
       card.classList.add('editing');
-      this.editBtn.innerHTML = `<i class="fa-solid fa-square-check"></i>`;
-      socket.emit('post-editing', this.postId);
+      this.editBtn.querySelector('i')!.className = 'fa-solid fa-square-check';
+
+      socket.emit('post-editing', {
+        id: this.postId,
+        user: currentUser,
+      });
+
+      if (!(window as any).currentEditingPosts) {
+        (window as any).currentEditingPosts = new Set();
+      }
+      (window as any).currentEditingPosts.add(this.postId);
+
       this.editing = true;
     } else {
       this.titleEl.contentEditable = 'false';
@@ -84,7 +125,8 @@ export class NoteComponent extends BaseComponent<HTMLElement> {
       this.titleEl.oninput = null;
       this.bodyEl.oninput = null;
       card.classList.remove('editing');
-      this.editBtn.innerHTML = `<i class="fa-solid fa-pen-to-square"></i>`;
+      this.editBtn.querySelector('i')!.className = 'fa-solid fa-pen-to-square';
+
       const updated = {
         title: this.titleEl.innerHTML || '',
         body: this.bodyEl.innerHTML || '',
@@ -96,7 +138,16 @@ export class NoteComponent extends BaseComponent<HTMLElement> {
       })
         .then((r) => r.json())
         .then((post) => socket.emit('post-updated', post));
-      socket.emit('post-editing-done', this.postId);
+
+      socket.emit('post-editing-done', {
+        id: this.postId,
+        user: currentUser,
+      });
+
+      if ((window as any).currentEditingPosts) {
+        (window as any).currentEditingPosts.delete(this.postId);
+      }
+
       this.editing = false;
     }
   }
@@ -108,5 +159,42 @@ export class NoteComponent extends BaseComponent<HTMLElement> {
       title: this.titleEl.innerHTML,
       body: this.bodyEl.innerHTML,
     });
+  }
+
+  private updateBadges() {
+    if (!this.badgesEl) {
+      this.badgesEl = document.createElement('div');
+      this.badgesEl.className = 'editing-badges';
+      const card = this.element.closest('.page-item') as HTMLElement;
+      if (card) card.appendChild(this.badgesEl);
+    }
+    this.badgesEl.innerHTML = '';
+
+    const users = Array.from(this.editingUsers.values());
+    const maxVisible = 2;
+
+    users.slice(0, maxVisible).forEach((user) => {
+      const badge = document.createElement('div');
+      badge.className = 'badge-circle';
+      badge.innerText = user.name ? user.name.charAt(0).toUpperCase() : '?';
+      badge.title = `${user.name} is editing…`;
+
+      const color = getUserColor(user.name);
+      badge.style.backgroundColor = color;
+
+      this.badgesEl!.appendChild(badge);
+    });
+
+    if (users.length > maxVisible) {
+      const more = document.createElement('div');
+      more.className = 'badge-circle';
+      more.innerText = `+${users.length - maxVisible}`;
+      more.title = users
+        .slice(maxVisible)
+        .map((u) => `${u.name} is editing…`)
+        .join('\n');
+      more.style.backgroundColor = '#fbd3f1ff';
+      this.badgesEl!.appendChild(more);
+    }
   }
 }

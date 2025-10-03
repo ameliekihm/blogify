@@ -1,12 +1,22 @@
-const express = require('express');
-const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
-const http = require('http');
-const { Server } = require('socket.io');
-const { createClient } = require('redis');
-const { createAdapter } = require('@socket.io/redis-adapter');
-require('dotenv').config();
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import express from 'express';
+import cors from 'cors';
+import fs from 'fs';
+import http from 'http';
+import { Server } from 'socket.io';
+import { createClient } from 'redis';
+import { createAdapter } from '@socket.io/redis-adapter';
+import passport from 'passport';
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import jwt from 'jsonwebtoken';
+import session from 'express-session';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 const server = http.createServer(app);
@@ -25,8 +35,73 @@ Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
   io.adapter(createAdapter(pubClient, subClient));
 });
 
-app.use(cors());
+app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
 app.use(express.json());
+
+app.use(
+  session({
+    secret: process.env.JWT_SECRET,
+    resave: false,
+    saveUninitialized: true,
+  })
+);
+app.use(passport.initialize());
+app.use(passport.session());
+
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL: 'http://localhost:4000/auth/google/callback',
+    },
+    (accessToken, refreshToken, profile, done) => {
+      const user = {
+        id: profile.id,
+        email: profile.emails[0].value,
+        firstName: profile.name.givenName,
+        lastName: profile.name.familyName,
+        photo: profile.photos[0].value,
+      };
+      return done(null, user);
+    }
+  )
+);
+
+passport.serializeUser((user, done) => {
+  done(null, user);
+});
+passport.deserializeUser((obj, done) => {
+  done(null, obj);
+});
+
+app.get(
+  '/auth/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] })
+);
+
+app.get(
+  '/auth/google/callback',
+  passport.authenticate('google', { failureRedirect: '/' }),
+  (req, res) => {
+    const token = jwt.sign(req.user, process.env.JWT_SECRET, {
+      expiresIn: '1h',
+    });
+    res.redirect(`http://localhost:5173?token=${token}`);
+  }
+);
+
+app.get('/api/me', (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'No token' });
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    res.json(decoded);
+  } catch (err) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
 
 let posts = [];
 let order = [];
@@ -42,7 +117,7 @@ function loadPosts() {
       if (posts.length > 0) {
         nextId = Math.max(...posts.map((p) => p.id)) + 1;
       }
-    } catch (err) {
+    } catch {
       posts = [];
       order = [];
     }
@@ -115,22 +190,38 @@ app.delete('/api/posts/:id', (req, res) => {
   res.json(deletedPost);
 });
 
+const editingUsers = new Map();
+
 io.on('connection', (socket) => {
-  socket.on('cursor-move', (data) => {
-    socket.broadcast.emit('cursor-move', data);
+  socket.on('cursor-move', (data) =>
+    socket.broadcast.emit('cursor-move', data)
+  );
+
+  socket.on('text-change', (data) =>
+    socket.broadcast.emit('text-change', data)
+  );
+
+  socket.on('post-editing', (data) => {
+    if (!editingUsers.has(data.id)) editingUsers.set(data.id, new Map());
+    const map = editingUsers.get(data.id);
+    map.set(socket.id, data.user);
+    io.emit('post-editing', { ...data, socketId: socket.id });
   });
-  socket.on('text-change', (data) => {
-    socket.broadcast.emit('text-change', data);
+
+  socket.on('post-editing-done', (data) => {
+    if (editingUsers.has(data.id)) {
+      const map = editingUsers.get(data.id);
+      const user = map.get(socket.id);
+      map.delete(socket.id);
+      if (map.size === 0) editingUsers.delete(data.id);
+      io.emit('post-editing-done', { id: data.id, user, socketId: socket.id });
+    }
   });
-  socket.on('post-editing', (postId) => {
-    socket.broadcast.emit('post-editing', postId);
-  });
-  socket.on('post-editing-done', (postId) => {
-    socket.broadcast.emit('post-editing-done', postId);
-  });
-  socket.on('post-typing', (data) => {
-    socket.broadcast.emit('post-typing', data);
-  });
+
+  socket.on('post-typing', (data) =>
+    socket.broadcast.emit('post-typing', data)
+  );
+
   socket.on('post-updated', (data) => {
     const post = posts.find((p) => p.id === data.id);
     if (post) {
@@ -142,8 +233,26 @@ io.on('connection', (socket) => {
       io.emit('post-updated', post);
     }
   });
-  socket.on('post-checked', (data) => {
-    socket.broadcast.emit('post-checked', data);
+
+  socket.on('post-checked', (data) =>
+    socket.broadcast.emit('post-checked', data)
+  );
+
+  socket.on('disconnect', () => {
+    for (const [postId, map] of editingUsers.entries()) {
+      if (map.has(socket.id)) {
+        const user = map.get(socket.id);
+        map.delete(socket.id);
+        io.emit('post-editing-done', {
+          id: Number(postId),
+          user,
+          socketId: socket.id,
+        });
+      }
+      if (map.size === 0) {
+        editingUsers.delete(postId);
+      }
+    }
   });
 });
 

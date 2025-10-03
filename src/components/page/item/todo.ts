@@ -1,7 +1,25 @@
 import { BaseComponent } from '../../component';
 import socket from '../../../socket';
+import { showPopup } from '../popup';
 
 const API_URL = import.meta.env.VITE_API_URL;
+const userColors = new Map<string, string>();
+const palette = [
+  '#f9b9b2ff',
+  '#badef7ff',
+  '#c6e9d4ff',
+  '#e5c9f0ff',
+  '#f5e3c6ff',
+  '#bee8dfff',
+];
+
+function getUserColor(userId: string) {
+  if (!userColors.has(userId)) {
+    const color = palette[Math.floor(Math.random() * palette.length)];
+    userColors.set(userId, color);
+  }
+  return userColors.get(userId)!;
+}
 
 export class TodoComponent extends BaseComponent<HTMLElement> {
   private titleEl: HTMLElement;
@@ -9,6 +27,8 @@ export class TodoComponent extends BaseComponent<HTMLElement> {
   private editBtn: HTMLButtonElement;
   private postId?: number;
   private editing = false;
+  private editingUsers = new Map<string, any>();
+  private badgesEl?: HTMLElement;
 
   constructor(
     title: string,
@@ -34,19 +54,21 @@ export class TodoComponent extends BaseComponent<HTMLElement> {
 
     this.editBtn.onclick = () => this.toggleEdit();
 
-    socket.on('post-editing', (id: number) => {
-      if (id === this.postId) {
+    socket.on('post-editing', (data: any) => {
+      if (data.id === this.postId) {
         const card = this.element.closest('.page-item') as HTMLElement;
         card?.classList.add('editing');
-        this.editBtn.innerHTML = `<i class="fa-solid fa-square-check"></i>`;
+        this.editingUsers.set(data.socketId, data.user);
+        this.updateBadges();
       }
     });
 
-    socket.on('post-editing-done', (id: number) => {
-      if (id === this.postId) {
+    socket.on('post-editing-done', (data: any) => {
+      if (data.id === this.postId) {
         const card = this.element.closest('.page-item') as HTMLElement;
         card?.classList.remove('editing');
-        this.editBtn.innerHTML = `<i class="fa-solid fa-pen-to-square"></i>`;
+        this.editingUsers.delete(data.socketId);
+        this.updateBadges();
       }
     });
 
@@ -133,6 +155,12 @@ export class TodoComponent extends BaseComponent<HTMLElement> {
     const card = this.element.closest('.page-item') as HTMLElement;
     if (!card) return;
 
+    const currentUser = (window as any).currentUser;
+    if (!currentUser) {
+      showPopup('Log in to start editing');
+      return;
+    }
+
     if (!this.editing) {
       this.editing = true;
       this.titleEl.contentEditable = 'true';
@@ -141,8 +169,20 @@ export class TodoComponent extends BaseComponent<HTMLElement> {
         line.addEventListener('input', () => this.emitTyping());
       });
       card.classList.add('editing');
-      this.editBtn.innerHTML = `<i class="fa-solid fa-square-check"></i>`;
-      socket.emit('post-editing', this.postId);
+      this.editBtn.querySelector('i')!.className = 'fa-solid fa-square-check';
+
+      socket.emit('post-editing', {
+        id: this.postId,
+        user: (window as any).currentUser || {
+          name: 'Guest',
+          photo: '/default-avatar.jpg',
+        },
+      });
+
+      if (!(window as any).currentEditingPosts) {
+        (window as any).currentEditingPosts = new Set();
+      }
+      (window as any).currentEditingPosts.add(this.postId);
     } else {
       this.editing = false;
       this.titleEl.contentEditable = 'false';
@@ -167,9 +207,21 @@ export class TodoComponent extends BaseComponent<HTMLElement> {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updated),
       });
-      socket.emit('post-editing-done', this.postId);
+
+      socket.emit('post-editing-done', {
+        id: this.postId,
+        user: (window as any).currentUser || {
+          name: 'Guest',
+          photo: '/default-avatar.jpg',
+        },
+      });
+
+      if ((window as any).currentEditingPosts) {
+        (window as any).currentEditingPosts.delete(this.postId);
+      }
+
       card.classList.remove('editing');
-      this.editBtn.innerHTML = `<i class="fa-solid fa-pen-to-square"></i>`;
+      this.editBtn.querySelector('i')!.className = 'fa-solid fa-pen-to-square';
     }
   }
 
@@ -187,5 +239,42 @@ export class TodoComponent extends BaseComponent<HTMLElement> {
       body: newBody,
       checks,
     });
+  }
+
+  private updateBadges() {
+    if (!this.badgesEl) {
+      this.badgesEl = document.createElement('div');
+      this.badgesEl.className = 'editing-badges';
+      const card = this.element.closest('.page-item') as HTMLElement;
+      if (card) card.appendChild(this.badgesEl);
+    }
+    this.badgesEl.innerHTML = '';
+
+    const users = Array.from(this.editingUsers.values());
+    const maxVisible = 2;
+
+    users.slice(0, maxVisible).forEach((user) => {
+      const badge = document.createElement('div');
+      badge.className = 'badge-circle';
+      badge.innerText = user.name ? user.name.charAt(0).toUpperCase() : '?';
+      badge.title = `${user.name} is editing…`;
+
+      const color = getUserColor(user.name);
+      badge.style.backgroundColor = color;
+
+      this.badgesEl!.appendChild(badge);
+    });
+
+    if (users.length > maxVisible) {
+      const more = document.createElement('div');
+      more.className = 'badge-circle';
+      more.innerText = `+${users.length - maxVisible}`;
+      more.title = users
+        .slice(maxVisible)
+        .map((u) => `${u.name} is editing…`)
+        .join('\n');
+      more.style.backgroundColor = '#7f8c8d';
+      this.badgesEl!.appendChild(more);
+    }
   }
 }
