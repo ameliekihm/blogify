@@ -16,3 +16,8 @@ data/
 cleanup-dev.sh
 test-client.js
 backend/package-lock.json
+
+# macOS system files
+.DS_Store
+*/.DS_Store
+

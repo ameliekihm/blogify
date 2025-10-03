@@ -1,5 +1,6 @@
 import { BaseComponent } from '../../component';
 import socket from '../../../socket';
+import { showPopup } from '../popup';
 
 const API_URL = import.meta.env.VITE_API_URL;
 const userColors = new Map<string, string>();
@@ -153,6 +154,12 @@ export class TodoComponent extends BaseComponent<HTMLElement> {
     if (!this.postId) return;
     const card = this.element.closest('.page-item') as HTMLElement;
     if (!card) return;
+
+    const currentUser = (window as any).currentUser;
+    if (!currentUser) {
+      showPopup('Log in to start editing');
+      return;
+    }
 
     if (!this.editing) {
       this.editing = true;

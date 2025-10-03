@@ -1,6 +1,7 @@
 import { BaseComponent } from '../../component';
 import { API_URL } from '../../../config';
 import socket from '../../../socket';
+import { showPopup } from '../popup';
 
 const userColors = new Map<string, string>();
 const palette = [
@@ -92,6 +93,12 @@ export class NoteComponent extends BaseComponent<HTMLElement> {
     const card = this.element.closest('.page-item') as HTMLElement;
     if (!card) return;
 
+    const currentUser = (window as any).currentUser;
+    if (!currentUser) {
+      showPopup('Log in to start editing');
+      return;
+    }
+
     if (!this.editing) {
       this.titleEl.contentEditable = 'true';
       this.bodyEl.contentEditable = 'true';
@@ -103,10 +110,7 @@ export class NoteComponent extends BaseComponent<HTMLElement> {
 
       socket.emit('post-editing', {
         id: this.postId,
-        user: (window as any).currentUser || {
-          name: 'Guest',
-          photo: '/default-avatar.jpg',
-        },
+        user: currentUser,
       });
 
       if (!(window as any).currentEditingPosts) {
@@ -137,10 +141,7 @@ export class NoteComponent extends BaseComponent<HTMLElement> {
 
       socket.emit('post-editing-done', {
         id: this.postId,
-        user: (window as any).currentUser || {
-          name: 'Guest',
-          photo: '/default-avatar.jpg',
-        },
+        user: currentUser,
       });
 
       if ((window as any).currentEditingPosts) {
