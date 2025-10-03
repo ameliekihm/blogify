@@ -14,6 +14,8 @@ import { PageComponent, PageItemComponent } from './components/page/page.js';
 import { Component } from './components/component.js';
 import { API_URL } from './config';
 import { io, Socket } from 'socket.io-client';
+import { showPopup } from './components/page/popup';
+import { getCurrentUser } from './auth/auth';
 
 initAuthHeader();
 
@@ -87,7 +89,13 @@ class App {
     type: string
   ) {
     const element = document.querySelector(selector)! as HTMLButtonElement;
-    element.addEventListener('click', () => {
+    element.addEventListener('click', async () => {
+      const currentUser = await getCurrentUser();
+      if (!currentUser) {
+        showPopup('Log in to create your Blogify post');
+        return;
+      }
+
       const dialog = new InputDialog('Add');
       const input = new InputComponent();
       dialog.addChild(input);
