@@ -6,6 +6,20 @@ import {
 } from '../auth/auth';
 import socket from '../socket';
 
+function getRandomAvatar() {
+  const avatars = [
+    '/assets/default-avatar1.jpg',
+    '/assets/default-avatar2.jpg',
+    '/assets/default-avatar3.jpg',
+    '/assets/default-avatar4.jpg',
+    '/assets/default-avatar5.jpg',
+    '/assets/default-avatar6.jpg',
+    '/assets/default-avatar7.jpg',
+  ];
+  const idx = Math.floor(Math.random() * avatars.length);
+  return avatars[idx];
+}
+
 export async function initAuthHeader() {
   saveTokenFromURL();
 
@@ -29,11 +43,11 @@ export async function initAuthHeader() {
     userInfo.className = 'user-info';
 
     const img = document.createElement('img');
-    img.src = user.photo || '/assets/default-avatar.jpg';
+    img.src = user.photo || getRandomAvatar();
     img.width = 32;
     img.height = 32;
     img.onerror = () => {
-      img.src = '/assets/default-avatar.jpg';
+      img.src = getRandomAvatar();
     };
 
     const span = document.createElement('span');
@@ -53,7 +67,7 @@ export async function initAuthHeader() {
           id: postId,
           user: (window as any).currentUser || {
             name: 'Guest',
-            photo: '/assets/default-avatar.jpg',
+            photo: getRandomAvatar(),
           },
         });
       });
@@ -76,7 +90,7 @@ export async function initAuthHeader() {
     userInfo.className = 'user-info';
 
     const img = document.createElement('img');
-    img.src = '/assets/default-avatar.jpg';
+    img.src = getRandomAvatar();
     img.width = 32;
     img.height = 32;
 
