@@ -115,10 +115,21 @@ app.get(
   '/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/' }),
   (req, res) => {
-    const token = jwt.sign(req.user, process.env.JWT_SECRET, {
+    const token = jwt.sign({ user: req.user }, process.env.JWT_SECRET, {
       expiresIn: '1h',
     });
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+    const allowedOrigins = [
+      process.env.FRONTEND_URL || 'http://localhost:8080',
+      'http://localhost:5173',
+      'http://localhost:8080',
+    ];
+
+    const origin = req.headers.origin;
+    const frontendUrl = allowedOrigins.includes(origin)
+      ? origin
+      : process.env.FRONTEND_URL || 'http://localhost:8080';
+
     res.redirect(`${frontendUrl}?token=${token}`);
   }
 );
