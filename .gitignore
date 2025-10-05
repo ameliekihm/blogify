@@ -24,3 +24,7 @@ backend/package-lock.json
 
 k8s/secret.yaml
 iam_policy.json
+
+# Local IAM/Trust policies
+*.json
+!k8s/*.json

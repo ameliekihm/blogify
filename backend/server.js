@@ -8,9 +8,14 @@ import http from 'http';
 import { Server } from 'socket.io';
 import { createClient } from 'redis';
 import { createAdapter } from '@socket.io/redis-adapter';
+import jwt from 'jsonwebtoken';
+
+// Cognito
+import jwkToPem from 'jwk-to-pem';
+
+// GoogleStrategy (local)
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
-import jwt from 'jsonwebtoken';
 import session from 'express-session';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -20,6 +25,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 const server = http.createServer(app);
+
 const allowedOrigins = (process.env.FRONTEND_URLS || '')
   .split(',')
   .map((o) => o.trim())
@@ -66,85 +72,135 @@ Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
 
 app.use(express.json());
 
-app.use(
-  session({
-    secret: process.env.JWT_SECRET || 'dev-secret',
-    resave: false,
-    saveUninitialized: true,
-  })
-);
-app.use(passport.initialize());
-app.use(passport.session());
+/* ---------------- AUTH ---------------- */
+const AUTH_MODE = process.env.AUTH_MODE || 'local'; // local | cognito
 
-passport.use(
-  new GoogleStrategy(
-    {
-      clientID: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL:
-        process.env.GOOGLE_CALLBACK_URL ||
-        'http://localhost:4000/auth/google/callback',
-    },
-    (accessToken, refreshToken, profile, done) => {
-      const user = {
-        id: profile.id,
-        email: profile.emails[0].value,
-        firstName: profile.name.givenName,
-        lastName: profile.name.familyName,
-        photo: profile.photos[0].value,
-      };
-      return done(null, user);
+if (AUTH_MODE === 'local') {
+  app.use(
+    session({
+      secret: process.env.JWT_SECRET || 'dev-secret',
+      resave: false,
+      saveUninitialized: true,
+    })
+  );
+  app.use(passport.initialize());
+  app.use(passport.session());
+
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        callbackURL:
+          process.env.GOOGLE_CALLBACK_URL ||
+          'http://localhost:4000/auth/google/callback',
+      },
+      (accessToken, refreshToken, profile, done) => {
+        const user = {
+          id: profile.id,
+          email: profile.emails[0].value,
+          firstName: profile.name.givenName,
+          lastName: profile.name.familyName,
+          photo: profile.photos[0].value,
+        };
+        return done(null, user);
+      }
+    )
+  );
+
+  passport.serializeUser((user, done) => {
+    done(null, user);
+  });
+  passport.deserializeUser((obj, done) => {
+    done(null, obj);
+  });
+
+  app.get(
+    '/auth/google',
+    passport.authenticate('google', { scope: ['profile', 'email'] })
+  );
+
+  app.get(
+    '/auth/google/callback',
+    passport.authenticate('google', { failureRedirect: '/' }),
+    (req, res) => {
+      const token = jwt.sign({ user: req.user }, process.env.JWT_SECRET, {
+        expiresIn: '1h',
+      });
+
+      const allowedOrigins = [
+        process.env.FRONTEND_URL || 'http://localhost:8080',
+        'http://localhost:5173',
+        'http://localhost:8080',
+      ];
+
+      const origin = req.headers.origin;
+      const frontendUrl = allowedOrigins.includes(origin)
+        ? origin
+        : process.env.FRONTEND_URL || 'http://localhost:8080';
+
+      res.redirect(`${frontendUrl}?token=${token}`);
     }
-  )
-);
+  );
+}
 
-passport.serializeUser((user, done) => {
-  done(null, user);
-});
-passport.deserializeUser((obj, done) => {
-  done(null, obj);
-});
+/* ===== Cognito ===== */
+let pems;
+const jwksUrl = process.env.COGNITO_USER_POOL_ID
+  ? `https://cognito-idp.${process.env.COGNITO_REGION}.amazonaws.com/${process.env.COGNITO_USER_POOL_ID}/.well-known/jwks.json`
+  : null;
 
-app.get(
-  '/auth/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] })
-);
-
-app.get(
-  '/auth/google/callback',
-  passport.authenticate('google', { failureRedirect: '/' }),
-  (req, res) => {
-    const token = jwt.sign({ user: req.user }, process.env.JWT_SECRET, {
-      expiresIn: '1h',
+async function getPems() {
+  if (!pems && jwksUrl) {
+    const res = await fetch(jwksUrl);
+    const { keys } = await res.json();
+    pems = {};
+    keys.forEach((key) => {
+      pems[key.kid] = jwkToPem(key);
     });
-
-    const allowedOrigins = [
-      process.env.FRONTEND_URL || 'http://localhost:8080',
-      'http://localhost:5173',
-      'http://localhost:8080',
-    ];
-
-    const origin = req.headers.origin;
-    const frontendUrl = allowedOrigins.includes(origin)
-      ? origin
-      : process.env.FRONTEND_URL || 'http://localhost:8080';
-
-    res.redirect(`${frontendUrl}?token=${token}`);
   }
-);
+  return pems;
+}
 
-app.get('/api/me', (req, res) => {
+async function verifyCognitoToken(token) {
+  const decoded = jwt.decode(token, { complete: true });
+  if (!decoded) throw new Error('Invalid JWT');
+  const pems = await getPems();
+  const pem = pems[decoded.header.kid];
+  if (!pem) throw new Error('Invalid kid');
+  return new Promise((resolve, reject) => {
+    jwt.verify(
+      token,
+      pem,
+      {
+        issuer: `https://cognito-idp.${process.env.COGNITO_REGION}.amazonaws.com/${process.env.COGNITO_USER_POOL_ID}`,
+      },
+      (err, payload) => {
+        if (err) reject(err);
+        else resolve(payload);
+      }
+    );
+  });
+}
+
+app.get('/api/me', async (req, res) => {
   const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ error: 'No token' });
+  if (!authHeader) return res.status(401).json({ error: 'No token provided' });
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    res.json(decoded.user);
+    if (AUTH_MODE === 'local') {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      res.json(decoded.user);
+    } else {
+      const decoded = await verifyCognitoToken(token);
+      res.json(decoded);
+    }
   } catch (err) {
     res.status(401).json({ error: 'Invalid token' });
   }
 });
 
+/* ---------------- POSTS ---------------- */
 let posts = [];
 let order = [];
 let nextId = 1;
@@ -232,6 +288,7 @@ app.delete('/api/posts/:id', (req, res) => {
   res.json(deletedPost);
 });
 
+/* ---------------- SOCKET.IO ---------------- */
 const editingUsers = new Map();
 
 io.on('connection', (socket) => {
@@ -299,5 +356,7 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(
+    `🚀 Server running on http://localhost:${PORT} (auth mode: ${AUTH_MODE})`
+  );
 });
