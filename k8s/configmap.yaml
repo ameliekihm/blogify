@@ -3,4 +3,6 @@ kind: ConfigMap
 metadata:
   name: blogify-config
 data:
-  VITE_API_URL: 'http://backend:4000'
+  REDIS_HOST: 'redis'
+  REDIS_PORT: '6379'
+  FRONTEND_URLS: 'https://blogify.click'

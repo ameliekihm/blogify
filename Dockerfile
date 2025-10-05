@@ -19,7 +19,7 @@ ARG VITE_API_URL
 ENV VITE_API_URL=$VITE_API_URL
 
 # Build project with injected API URL
-RUN npm run build
+RUN VITE_API_URL=$VITE_API_URL npm run build
 
 # ---- Stage 2: Serve with Nginx ----
 FROM nginx:alpine
