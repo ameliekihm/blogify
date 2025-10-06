@@ -9,14 +9,8 @@ import { Server } from 'socket.io';
 import { createClient } from 'redis';
 import { createAdapter } from '@socket.io/redis-adapter';
 import jwt from 'jsonwebtoken';
-
-// Cognito
 import jwkToPem from 'jwk-to-pem';
-
-// GoogleStrategy (local)
-import passport from 'passport';
-import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
-import session from 'express-session';
+import fetch from 'node-fetch';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,7 +20,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 const app = express();
 const server = http.createServer(app);
 
-const allowedOrigins = (process.env.FRONTEND_URLS || '')
+const allowedOrigins = (process.env.FRONTEND_URL || '')
   .split(',')
   .map((o) => o.trim())
   .filter(Boolean);
@@ -72,79 +66,7 @@ Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
 
 app.use(express.json());
 
-/* ---------------- AUTH ---------------- */
-const AUTH_MODE = process.env.AUTH_MODE || 'local'; // local | cognito
-
-if (AUTH_MODE === 'local') {
-  app.use(
-    session({
-      secret: process.env.JWT_SECRET || 'dev-secret',
-      resave: false,
-      saveUninitialized: true,
-    })
-  );
-  app.use(passport.initialize());
-  app.use(passport.session());
-
-  passport.use(
-    new GoogleStrategy(
-      {
-        clientID: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL:
-          process.env.GOOGLE_CALLBACK_URL ||
-          'http://localhost:4000/auth/google/callback',
-      },
-      (accessToken, refreshToken, profile, done) => {
-        const user = {
-          id: profile.id,
-          email: profile.emails[0].value,
-          firstName: profile.name.givenName,
-          lastName: profile.name.familyName,
-          photo: profile.photos[0].value,
-        };
-        return done(null, user);
-      }
-    )
-  );
-
-  passport.serializeUser((user, done) => {
-    done(null, user);
-  });
-  passport.deserializeUser((obj, done) => {
-    done(null, obj);
-  });
-
-  app.get(
-    '/auth/google',
-    passport.authenticate('google', { scope: ['profile', 'email'] })
-  );
-
-  app.get(
-    '/auth/google/callback',
-    passport.authenticate('google', { failureRedirect: '/' }),
-    (req, res) => {
-      const token = jwt.sign({ user: req.user }, process.env.JWT_SECRET, {
-        expiresIn: '1h',
-      });
-
-      const allowedOrigins = [
-        process.env.FRONTEND_URL || 'http://localhost:8080',
-        'http://localhost:5173',
-        'http://localhost:8080',
-      ];
-
-      const origin = req.headers.origin;
-      const frontendUrl = allowedOrigins.includes(origin)
-        ? origin
-        : process.env.FRONTEND_URL || 'http://localhost:8080';
-
-      res.redirect(`${frontendUrl}?token=${token}`);
-    }
-  );
-}
-
-/* ===== Cognito ===== */
+/* ---------------- AUTH (Cognito Only) ---------------- */
 let pems;
 const jwksUrl = process.env.COGNITO_USER_POOL_ID
   ? `https://cognito-idp.${process.env.COGNITO_REGION}.amazonaws.com/${process.env.COGNITO_USER_POOL_ID}/.well-known/jwks.json`
@@ -183,18 +105,53 @@ async function verifyCognitoToken(token) {
   });
 }
 
+app.get('/auth/callback', async (req, res) => {
+  const code = req.query.code;
+  const redirectUri =
+    req.query.redirect_uri || process.env.COGNITO_REDIRECT_URI;
+
+  if (!code) {
+    return res.status(400).json({ error: 'Missing code' });
+  }
+
+  try {
+    const tokenRes = await fetch(`${process.env.COGNITO_DOMAIN}/oauth2/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: process.env.COGNITO_CLIENT_ID,
+        code,
+        redirect_uri: redirectUri,
+      }),
+    });
+
+    const data = await tokenRes.json();
+    if (!tokenRes.ok) {
+      console.error('Token exchange failed', data);
+      return res
+        .status(400)
+        .json({ error: 'Token exchange failed', details: data });
+    }
+
+    res.json({
+      id_token: data.id_token,
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+    });
+  } catch (err) {
+    console.error('Callback error', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 app.get('/api/me', async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ error: 'No token provided' });
   const token = authHeader.split(' ')[1];
   try {
-    if (AUTH_MODE === 'local') {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      res.json(decoded.user);
-    } else {
-      const decoded = await verifyCognitoToken(token);
-      res.json(decoded);
-    }
+    const decoded = await verifyCognitoToken(token);
+    res.json(decoded);
   } catch (err) {
     res.status(401).json({ error: 'Invalid token' });
   }
@@ -356,7 +313,5 @@ io.on('connection', (socket) => {
 });
 
 server.listen(PORT, () => {
-  console.log(
-    `🚀 Server running on http://localhost:${PORT} (auth mode: ${AUTH_MODE})`
-  );
+  console.log(`🚀 Server running on http://localhost:${PORT} (Cognito only)`);
 });

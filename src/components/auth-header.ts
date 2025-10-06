@@ -21,16 +21,17 @@ function getRandomAvatar() {
 }
 
 export async function initAuthHeader() {
-  saveTokenFromURL();
+  await saveTokenFromURL();
 
   const user = await getCurrentUser();
+
   const header = document.querySelector('#auth-header') as HTMLElement;
   if (!header) return;
 
   if (user) {
     (window as any).currentUser = {
-      name: user.firstName,
-      photo: user.photo,
+      name: user.given_name || user.name || 'Unknown',
+      photo: user.picture || getRandomAvatar(),
     };
 
     header.innerHTML = '';
@@ -43,7 +44,7 @@ export async function initAuthHeader() {
     userInfo.className = 'user-info';
 
     const img = document.createElement('img');
-    img.src = user.photo || getRandomAvatar();
+    img.src = user.picture || getRandomAvatar();
     img.width = 32;
     img.height = 32;
     img.onerror = () => {
@@ -51,7 +52,7 @@ export async function initAuthHeader() {
     };
 
     const span = document.createElement('span');
-    span.textContent = user.firstName;
+    span.textContent = user.given_name || user.name || 'Guest';
 
     userInfo.appendChild(img);
     userInfo.appendChild(span);
@@ -93,6 +94,9 @@ export async function initAuthHeader() {
     img.src = getRandomAvatar();
     img.width = 32;
     img.height = 32;
+    img.onerror = () => {
+      img.src = getRandomAvatar();
+    };
 
     const labels = document.createElement('div');
     labels.className = 'guest-labels';
