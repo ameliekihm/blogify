@@ -3,7 +3,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import express from 'express';
 import cors from 'cors';
-import fs from 'fs';
 import http from 'http';
 import { Server } from 'socket.io';
 import { createClient } from 'redis';
@@ -11,6 +10,14 @@ import { createAdapter } from '@socket.io/redis-adapter';
 import jwt from 'jsonwebtoken';
 import jwkToPem from 'jwk-to-pem';
 import fetch from 'node-fetch';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import {
+  DynamoDBDocumentClient,
+  ScanCommand,
+  PutCommand,
+  UpdateCommand,
+  DeleteCommand,
+} from '@aws-sdk/lib-dynamodb';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -52,8 +59,8 @@ const io = new Server(server, {
 });
 
 const PORT = 4000;
-const DATA_FILE = path.join(__dirname, '../data/posts.json');
 
+/* ---------------- REDIS ---------------- */
 const redisHost = process.env.REDIS_HOST || 'localhost';
 const redisPort = process.env.REDIS_PORT || '6379';
 
@@ -157,92 +164,135 @@ app.get('/api/me', async (req, res) => {
   }
 });
 
-/* ---------------- POSTS ---------------- */
-let posts = [];
-let order = [];
-let nextId = 1;
+/* ---------------- DYNAMODB POSTS ---------------- */
+const ddbClient = new DynamoDBClient({
+  region: process.env.AWS_REGION || 'us-east-1',
+});
+const ddb = DynamoDBDocumentClient.from(ddbClient);
+const TABLE_NAME = 'BlogifyPosts';
 
-function loadPosts() {
-  if (fs.existsSync(DATA_FILE)) {
-    const raw = fs.readFileSync(DATA_FILE, 'utf-8');
-    try {
-      const data = JSON.parse(raw);
-      posts = data.posts || [];
-      order = data.order || posts.map((p) => p.id);
-      if (posts.length > 0) {
-        nextId = Math.max(...posts.map((p) => p.id)) + 1;
-      }
-    } catch {
-      posts = [];
-      order = [];
-    }
+app.get('/api/posts', async (req, res) => {
+  try {
+    const data = await ddb.send(new ScanCommand({ TableName: TABLE_NAME }));
+    let posts = data.Items || [];
+    posts = posts.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+    const order = posts.map((p) => p.id);
+    res.json({ posts, order });
+  } catch (err) {
+    console.error('DynamoDB Scan error', err);
+    res.status(500).json({ error: 'Failed to fetch posts' });
   }
-}
-
-function savePosts() {
-  fs.writeFileSync(DATA_FILE, JSON.stringify({ posts, order }, null, 2));
-}
-
-loadPosts();
-
-app.get('/api/posts', (req, res) => {
-  res.json({ posts, order });
 });
 
-app.post('/api/posts', (req, res) => {
+app.post('/api/posts', async (req, res) => {
   const { title, body, type } = req.body;
   if (!title) return res.status(400).json({ error: 'Title is required' });
   if (!type) return res.status(400).json({ error: 'Type is required' });
-  const newPost = { id: nextId++, title, body, type };
-  if (type === 'todo') {
-    newPost.done = false;
-    newPost.checks = [];
+
+  const newPost = {
+    id: Date.now(),
+    title,
+    body,
+    type,
+    position: Date.now(),
+    ...(type === 'todo' ? { done: false, checks: [] } : {}),
+  };
+
+  try {
+    await ddb.send(new PutCommand({ TableName: TABLE_NAME, Item: newPost }));
+    io.emit('post-added', newPost);
+    res.status(201).json(newPost);
+  } catch (err) {
+    console.error('DynamoDB Put error', err);
+    res.status(500).json({ error: 'Failed to add post' });
   }
-  posts.push(newPost);
-  order.push(newPost.id);
-  savePosts();
-  io.emit('post-added', newPost);
-  res.status(201).json(newPost);
 });
 
-app.patch('/api/posts/reorder', (req, res) => {
-  const { order: newOrder } = req.body;
-  if (!Array.isArray(newOrder)) {
+app.patch('/api/posts/reorder', async (req, res) => {
+  const { order } = req.body;
+  if (!Array.isArray(order)) {
     return res.status(400).json({ error: 'order must be an array' });
   }
-  const valid = newOrder.every((id) => posts.find((p) => p.id === id));
-  if (!valid) {
-    return res.status(400).json({ error: 'Invalid postId in order' });
+  try {
+    for (let i = 0; i < order.length; i++) {
+      const id = Number(order[i]);
+      await ddb.send(
+        new UpdateCommand({
+          TableName: TABLE_NAME,
+          Key: { id },
+          UpdateExpression: 'SET #pos = :p',
+          ExpressionAttributeNames: { '#pos': 'position' },
+          ExpressionAttributeValues: { ':p': i },
+        })
+      );
+    }
+    io.emit('posts-reordered', order);
+    res.json({ success: true, order });
+  } catch (err) {
+    console.error('🔥 DynamoDB Reorder error', err);
+    res.status(500).json({ error: 'Failed to reorder posts' });
   }
-  order = newOrder;
-  savePosts();
-  io.emit('posts-reordered', order);
-  res.json({ success: true, order });
 });
 
-app.patch('/api/posts/:id', (req, res) => {
+app.patch('/api/posts/:id', async (req, res) => {
   const id = parseInt(req.params.id);
-  const post = posts.find((p) => p.id === id);
-  if (!post) return res.status(404).json({ error: 'Post not found' });
   const { title, body, done, checks } = req.body;
-  if (typeof title === 'string') post.title = title;
-  if (typeof body === 'string') post.body = body;
-  if (Array.isArray(checks)) post.checks = checks;
-  if (typeof done === 'boolean') post.done = done;
-  savePosts();
-  io.emit('post-updated', post);
-  res.json(post);
+
+  const updateExp = [];
+  const expValues = {};
+  if (typeof title === 'string') {
+    updateExp.push('title = :t');
+    expValues[':t'] = title;
+  }
+  if (typeof body === 'string') {
+    updateExp.push('body = :b');
+    expValues[':b'] = body;
+  }
+  if (Array.isArray(checks)) {
+    updateExp.push('checks = :c');
+    expValues[':c'] = checks;
+  }
+  if (typeof done === 'boolean') {
+    updateExp.push('done = :d');
+    expValues[':d'] = done;
+  }
+
+  try {
+    const result = await ddb.send(
+      new UpdateCommand({
+        TableName: TABLE_NAME,
+        Key: { id },
+        UpdateExpression: 'SET ' + updateExp.join(', '),
+        ExpressionAttributeValues: expValues,
+        ReturnValues: 'ALL_NEW',
+      })
+    );
+    const updated = result.Attributes;
+    io.emit('post-updated', updated);
+    res.json(updated);
+  } catch (err) {
+    console.error('DynamoDB Update error', err);
+    res.status(500).json({ error: 'Failed to update post' });
+  }
 });
 
-app.delete('/api/posts/:id', (req, res) => {
+app.delete('/api/posts/:id', async (req, res) => {
   const id = parseInt(req.params.id);
-  const index = posts.findIndex((post) => post.id === id);
-  if (index === -1) return res.status(404).json({ error: 'Post not found' });
-  const deletedPost = posts.splice(index, 1)[0];
-  order = order.filter((oid) => oid !== id);
-  savePosts();
-  io.emit('post-deleted', deletedPost);
-  res.json(deletedPost);
+  try {
+    const result = await ddb.send(
+      new DeleteCommand({
+        TableName: TABLE_NAME,
+        Key: { id },
+        ReturnValues: 'ALL_OLD',
+      })
+    );
+    const deleted = result.Attributes;
+    io.emit('post-deleted', deleted);
+    res.json(deleted);
+  } catch (err) {
+    console.error('DynamoDB Delete error', err);
+    res.status(500).json({ error: 'Failed to delete post' });
+  }
 });
 
 /* ---------------- SOCKET.IO ---------------- */
@@ -252,18 +302,15 @@ io.on('connection', (socket) => {
   socket.on('cursor-move', (data) =>
     socket.broadcast.emit('cursor-move', data)
   );
-
   socket.on('text-change', (data) =>
     socket.broadcast.emit('text-change', data)
   );
-
   socket.on('post-editing', (data) => {
     if (!editingUsers.has(data.id)) editingUsers.set(data.id, new Map());
     const map = editingUsers.get(data.id);
     map.set(socket.id, data.user);
     io.emit('post-editing', { ...data, socketId: socket.id });
   });
-
   socket.on('post-editing-done', (data) => {
     if (editingUsers.has(data.id)) {
       const map = editingUsers.get(data.id);
@@ -273,27 +320,9 @@ io.on('connection', (socket) => {
       io.emit('post-editing-done', { id: data.id, user, socketId: socket.id });
     }
   });
-
   socket.on('post-typing', (data) =>
     socket.broadcast.emit('post-typing', data)
   );
-
-  socket.on('post-updated', (data) => {
-    const post = posts.find((p) => p.id === data.id);
-    if (post) {
-      if (typeof data.title === 'string') post.title = data.title;
-      if (typeof data.body === 'string') post.body = data.body;
-      if (Array.isArray(data.checks)) post.checks = data.checks;
-      if (typeof data.done === 'boolean') post.done = data.done;
-      savePosts();
-      io.emit('post-updated', post);
-    }
-  });
-
-  socket.on('post-checked', (data) =>
-    socket.broadcast.emit('post-checked', data)
-  );
-
   socket.on('disconnect', () => {
     for (const [postId, map] of editingUsers.entries()) {
       if (map.has(socket.id)) {
@@ -305,13 +334,13 @@ io.on('connection', (socket) => {
           socketId: socket.id,
         });
       }
-      if (map.size === 0) {
-        editingUsers.delete(postId);
-      }
+      if (map.size === 0) editingUsers.delete(postId);
     }
   });
 });
 
 server.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT} (Cognito only)`);
+  console.log(
+    `🚀 Server running on http://localhost:${PORT} (Cognito + DynamoDB)`
+  );
 });
