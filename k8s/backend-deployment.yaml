@@ -12,6 +12,7 @@ spec:
       labels:
         app: backend
     spec:
+      serviceAccountName: blogify-backend-sa
       containers:
         - name: backend
           image: 835175800383.dkr.ecr.us-east-1.amazonaws.com/blogify-backend:latest
@@ -22,10 +23,3 @@ spec:
                 name: blogify-config
             - secretRef:
                 name: blogify-secret
-          volumeMounts:
-            - name: data
-              mountPath: /data
-      volumes:
-        - name: data
-          persistentVolumeClaim:
-            claimName: backend-pvc
