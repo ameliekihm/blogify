@@ -23,3 +23,14 @@ spec:
                 name: blogify-config
             - secretRef:
                 name: blogify-secret
+          env:
+            - name: REDIS_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: blogify-redis-secret
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: blogify-redis-secret
+                  key: REDIS_PORT
