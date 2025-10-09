@@ -1,0 +1,83 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main # Run only when pushing to main branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout application repository
+      - name: Checkout app repo
+        uses: actions/checkout@v3
+
+      # 2. Configure AWS credentials (IAM User or Role)
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      # 3. Docker login (ECR)
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # 4. Build & push frontend image
+      - name: Build & push frontend
+        run: |
+          IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/blogify-frontend
+          TAG=${GITHUB_SHA}
+          docker buildx build --platform linux/amd64 \
+            -t $IMAGE_URI:$TAG \
+            -t $IMAGE_URI:latest \
+            --push \
+            --build-arg VITE_API_URL=https://blogify.click \
+            --build-arg VITE_COGNITO_DOMAIN=https://us-east-1gwsrrj8im.auth.us-east-1.amazoncognito.com \
+            --build-arg VITE_COGNITO_CLIENT_ID=5f087qrafuituoo9pcsv698c3p \
+            --build-arg VITE_COGNITO_REDIRECT_URI=https://blogify.click/callback \
+            .
+
+      # 5. Build & push backend image
+      - name: Build & push backend
+        run: |
+          IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/blogify-backend
+          TAG=${GITHUB_SHA}
+          cd backend
+          docker buildx build --platform linux/amd64 \
+            -t $IMAGE_URI:$TAG \
+            -t $IMAGE_URI:latest \
+            --push \
+            .
+
+      # 6. Checkout manifests repository
+      - name: Checkout manifests repo
+        uses: actions/checkout@v3
+        with:
+          repository: ameliekihm/blogify-manifests
+          path: manifests
+          token: ${{ secrets.GH_PAT }}
+
+      # 7. Update Deployment YAML image tags
+      - name: Update manifests with new image tags
+        run: |
+          TAG=${GITHUB_SHA}
+          FRONTEND_IMAGE="${{ steps.login-ecr.outputs.registry }}/blogify-frontend:$TAG"
+          BACKEND_IMAGE="${{ steps.login-ecr.outputs.registry }}/blogify-backend:$TAG"
+
+          sed -i "s|image: .*/blogify-frontend:.*|image: $FRONTEND_IMAGE|" manifests/prod/frontend-deployment.yaml
+          sed -i "s|image: .*/blogify-backend:.*|image: $BACKEND_IMAGE|" manifests/prod/backend-deployment.yaml
+
+      # 8. Commit & push updated manifests
+      - name: Commit & push changes
+        run: |
+          cd manifests
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add .
+          git commit -m "chore: update image tags to $GITHUB_SHA"
+          git push origin main
