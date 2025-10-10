@@ -1,143 +1,251 @@
 # Blogify 📝
-<p align="center">
-<img width="871" alt="git file" src="https://github.com/user-attachments/assets/fc5ce21f-c172-47a8-a0b5-c66b01f5c4a1">
+<div align="center">
+
+ ![Image](https://github.com/user-attachments/assets/96ae73d8-b12a-46dd-b0fb-cdca94ce4b09)
+
+</div>
+
+> **Kubernetes on AWS EKS** with Cognito, DynamoDB, and ElastiCache Redis real-time collaborative blogging platform featuring secure authentication, scalable storage, and live synchronization.
+
+
+## 1. Project Overview
+
+**Blogify is a real time collaborative blogging platform.**  
+It allows multiple users to create and edit content together with live updates appearing instantly.  
+
+Users can post `notes`, `todos`, `images`, and `videos`, and organize them easily with a drag and drop interface.  
+The focus is on keeping the experience simple, flexible, and user friendly so that collaboration feels natural.
+  
+
+## 2. Motivation
+
+Blogify began as a **small demo project** built with *Vanilla TypeScript* and *Node.js*.  
+At first it was a simple prototype with basic layouts and components for `notes` and `todos`.
+
+When I decided to move it to the cloud, I did not want a simple migration.  
+It became a chance to **add new features** such as Google login, live editing, and real time synchronization.  
+
+Through this process Blogify evolved from a simple prototype into a **scalable collaborative platform** running on **AWS** and **Kubernetes**.
+
+
+
+## 3. Key Features
+
+- ### Authentication & User Management
+  - User login with AWS Cognito using the Authorization Code flow  
+  - Secure token verification through JWKS to PEM conversion  
+  - All users begin as **Guests** with read only access
+    <img width="657" height="120" alt="Image" src="https://github.com/user-attachments/assets/c4cd573c-2382-4ae2-95fe-37a3054163ee" />
+
+- ### Content Creation (Blog CRUD)
+  - Full CRUD operations on posts stored in AWS DynamoDB   
+  - Posts include `notes`, `todos`, `images`, and `videos`
+  - Content items can be reordered through **drag and drop**, supported by the `/api/posts/reorder` endpoint
+  - Posts can be edited instantly, just click the ✏️ icon to update content on the spot
+
+- ### Real Time Collaboration
+  - Multiple users can edit together in real time through **WebSockets**
+  - Posts currently being edited are highlighted with a **red border**, making changes obvious to others
+  - **Live typing** is synchronized so that updates appear instantly for all collaborators
+    ![Image](https://github.com/user-attachments/assets/a069febe-3370-44f6-8839-a50671417eb8)
+  - Hovering the badge reveals a tooltip such as `"XX is editing…"`, `"YY is editing…"`
+  - When more than three editors are active the display is condensed with a `+3` style counter
+  - **Redis pub** and **sub** ensures synchronization across multiple clients and pods
+ 
+
+- ### Scalability and Deployment
+  - `Local mode` with **Node.js** backend, **AWS DynamoDB**, and single **Redis** container
+  - `Production mode` on **AWS EKS** with **ElastiCache Redis** and **Horizontal Pod Autoscaler**
+  - Continuous delivery using **GitHub Action**s and **ArgoCD**
+
+
+## 4. Tech Stack
+<p align="left">
+   <img src="https://img.shields.io/badge/TypeScript-3178C6.svg?logo=typescript&logoColor=white" alt="TypeScript Badge" width="125">
+   <img src="https://img.shields.io/badge/Node.js-339933.svg?logo=node.js&logoColor=white" alt="Node.js Badge" width="100">
+   <img src="https://img.shields.io/badge/Express-000000.svg?logo=express&logoColor=white" alt="Express Badge" width="105">
+   <img src="https://custom-icon-badges.demolab.com/badge/AWS-%23FF9900.svg?logo=aws&logoColor=white" alt="AWS Badge" width="80">
+   <img src="https://img.shields.io/badge/Docker-2496ED.svg?logo=docker&logoColor=white" alt="Docker Badge" width="100">
+   <img src="https://img.shields.io/badge/Kubernetes-326CE5.svg?logo=kubernetes&logoColor=white" alt="Kubernetes Badge" width="135">
+   <img src="https://img.shields.io/badge/ArgoCD-EF7B4D.svg?logo=argo&logoColor=white" alt="ArgoCD Badge" width="103">
+   <img src="https://img.shields.io/badge/GitHub_Actions-2088FF.svg?logo=githubactions&logoColor=white" alt="GitHub Actions Badge" width="160">
+  <img src="https://img.shields.io/badge/GitOps-000000.svg?logo=git&logoColor=white" alt="GitOps Badge" width="94">
 </p>
 
+| Layer        | Technology                                  |
+| ------------ | ------------------------------------------- |
+| **Frontend** | Vanilla TypeScript (Vite), Nginx, CSS |
+| **Auth**     | AWS Cognito (OAuth2) + Google IdP           |
+| **Backend**  | Node.js, Express, Socket.IO                 |
+| **Database** | AWS DynamoDB                                |
+| **Realtime**    | AWS ElastiCache (Redis - Pub/Sub for Socket.IO)                     |
+| **Infra**    | AWS EKS (EC2 NodeGroup), IAM OIDC/IRSA      |
+| **Deploy**   | Docker, Amazon ECR, Kubernetes (EKS), ArgoCD (GitOps) |
+| **CI/CD**    | GitHub Actions + ArgoCD                     |
+| **Networking** | AWS Route53, ALB Ingress Controller, ExternalDNS |
 
-## Project Overview
+## 5. System Architecture
+- ### Local System Architecture
 
-**Blogify** is a TypeScript-based web application designed for creating and managing various types of content, including images, videos, notes, and to-do lists, utilizing modern programming paradigms.
-
-The project highlights advanced TypeScript features, such as Object-Oriented Programming (OOP), type safety, module-based architecture, and event-driven interactions.
-
-## Features
-
-- **Content Management**: Users can add, remove, and organize content such as images, videos, notes, and to-do lists.
-  
-- **Drag-and-Drop Functionality**: Fully integrated drag-and-drop interactions to rearrange content dynamically.
-  
-- **OOP Design**: Built on object-oriented principles, ensuring scalability, modularity, and clean code structure.
-  
-- **Event-Driven Architecture**: Custom event handling for user interactions like drag, drop, and deletion of content.
-  
-- **TypeScript Enhancements**:
-  - **Strong typing** for functions, objects, and components.
-    
-  - **Generics** for reusable and flexible code structures.
-    
-  - **Interfaces and Type Aliases** to define contracts for various components.
-    
-  - **Custom types** are used to manage state and facilitate drag-and-drop interactions.
-
-
-
-## Technologies Used
-
-- **TypeScript**: For its static typing, OOP features, and support for type safety across the application.
-  
-- **HTML/CSS**: For structure and styling.
-  
-- **Drag-and-Drop API**: For user interactions and organizing content.
-  
-- **Event Handling**: Custom event listeners for managing user interactions and state changes.
-
-
-## Architecture and Key Concepts
-
-### 1. Class-Based Components
-
-Each feature of the application is broken into modular components using TypeScript classes. This allows for scalable design and clean separation of concerns.
-
-**Example**: `BaseComponent` Class
-
-```typescript
-export abstract class BaseComponent<T extends HTMLElement> implements Component {
-  protected readonly element: T;
-
-  constructor(htmlString: string) {
-    const template = document.createElement('template');
-    template.innerHTML = htmlString;
-    this.element = template.content.firstElementChild! as T;
-  }
-
-  attachTo(parent: HTMLElement, position: InsertPosition = 'afterbegin') {
-    parent.insertAdjacentElement(position, this.element);
-  }
-}
+```plaintext
+Browser (Vanilla TS + Socket.IO client)
+│
+├── AWS Cognito (OAuth2 Login)
+│     └── Google IdP (Google Auth)
+│
+├── Node.js + Socket.IO (Express API + Realtime)
+      ├── AWS DynamoDB (Posts CRUD)
+      └── Redis (Local instance for Pub/Sub)
 ```
-- **Abstract classes** allow us to define base behaviors, enabling us to extend specific behaviors in child classes (e.g., `PageItemComponent`, `TodoComponent`).
+<img width="712" height="330" alt="Image" src="https://github.com/user-attachments/assets/db41acfa-bb9b-43c4-9acc-28ab31b493f2" />
+
+- ### AWS System Architecture (EKS Runtime)
   
-- **Type safety** with generics ensures that each `BaseComponent` handles a specific `HTMLElement` type.
-
-### 2. Interface-Driven Design
-
-Interfaces define clear contracts for components, making sure that different parts of the application interact correctly.
-
-**Example**: `Composable` Interface
-
-```typescript
-export interface Composable {
-  addChild(child: Component): void;
-}
+```plaintext
+Browser (Vanilla TS DOM + Socket.IO client)
+│
+├── AWS Cognito (OAuth2 Login)
+│     └── Google IdP (Google Auth)
+│
+└── Application Load Balancer (Ingress + ACM)
+      │
+      └── Amazon EKS Cluster (EC2 NodeGroup + EBS CSI)
+            │
+            ├── Frontend Pod (Nginx serving static assets)
+            │      └── Browser runs TypeScript DOM App
+            │
+            └── Backend Pod (Node.js + Express API + Socket.IO)
+                   ├── AWS DynamoDB (BlogifyPosts CRUD via IRSA)
+                   ├── AWS ElastiCache Redis (Pub/Sub adapter for Socket.IO)
+                   └── AWS Cognito (JWT validation)
 ```
-- This allows **components** to compose other components dynamically, ensuring flexibility across different sections of the app.
 
-### 3. Generics for Reusability
+<img width="867" height="600" alt="Image" src="https://github.com/user-attachments/assets/7acf70ff-2052-49ac-9c32-d6d917ff5f65" />
 
-Generics allow us to create reusable and flexible components. For example, we use a generic `OnDragStateListener` to handle drag-and-drop events for multiple types of content.
+## 6. Deployment Architecture (CI + CD with GitHub Actions & ArgoCD)
 
-**Example**: Drag and Drop with Generics
+<img width="947" height="435" alt="Image" src="https://github.com/user-attachments/assets/a78e2382-a881-4c11-9308-88f91a71591b" />
 
-```typescript
-type OnDragStateListener<T extends Component> = (target: T, state: DragState) => void;
+This deployment architecture illustrates the **CI/CD pipeline** for `Blogify`.  
+- **CI (GitHub Actions):** On every push to `main`, the workflow builds Docker images, pushes them to **AWS ECR**, and updates the [K8s Manifests Repo](https://github.com/ameliekihm/blogify-manifests) with the new image tags.  
+- **CD (ArgoCD/GitOps):** ArgoCD running inside **EKS** automatically syncs the manifests repo and rolls out updated pods (Frontend + Backend).
 
-export class PageItemComponent extends BaseComponent<HTMLElement> implements SectionContainer {
-  private dragStateListener?: OnDragStateListener<PageItemComponent>;
+## 7. Local Development Setup
 
-  setOnDragStateListener(listener: OnDragStateListener<PageItemComponent>) {
-    this.dragStateListener = listener;
-  }
+You can run **Blogify** locally without deploying to AWS.  
 
-  notifyDragObservers(state: DragState) {
-    this.dragStateListener && this.dragStateListener(this, state);
-  }
-}
+- ### Frontend (Vanilla TypeScript + Vite)
+```bash
+npm install
+npm run dev
 ```
-- By parameterizing the listener type with `<T extends Component>`, we ensure flexibility and type safety in drag-and-drop interactions across various components.
 
-### 4. Event-Driven Interactions
+This will start the frontend at `http://localhost:5173` (default Vite dev server).
 
-The drag-and-drop functionality relies heavily on custom event listeners, which handle various stages of the drag-and-drop process, ensuring smooth interactivity.
-
-**Example**: Custom Event Handling for Drag and Drop
-
-```typescript
-onDragStart(_: DragEvent) {
-  this.notifyDragObservers('start');
-}
-
-onDragEnd(_: DragEvent) {
-  this.notifyDragObservers('stop');
-}
-
-notifyDragObservers(state: DragState) {
-  this.dragStateListener && this.dragStateListener(this, state);
-}
+- ### Backend (Express + Socket.IO)
+```bash
+cd backend
+npm install
+npm start
 ```
-- This structure ensures that components respond appropriately to user interactions.
+The backend will run at `http://localhost:3000`.
 
-### 5. Strong Typing with TypeScript
+## 8. EKS Deployment Setup
 
-Strong typing with TypeScript ensures fewer runtime errors, better code readability, and more predictable function outputs.
+To make deployment easier, Blogify’s AWS infrastructure can be launched with a **single automated shell script**. 
+Below is the **step-by-step** process it handles:
 
-**Example**: Custom Types for State Management
 
-```typescript
-type DragState = 'start' | 'stop' | 'enter' | 'leave';
+1. **ECR Setup** – Create ECR repositories (frontend & backend), log in, build & push Docker images 
+2. **EKS Cluster** – Provision an EKS cluster with managed node groups, OIDC provider, and EBS CSI driver
+3. **ElastiCache Redis** – Create Redis cluster inside the same VPC and expose credentials as Kubernetes secrets 
+4. **IAM Integration** – Attach IAM roles for EBS, DynamoDB access (backend SA), and Load Balancer Controller
+5. **Load Balancer Controller** – Install AWS Load Balancer Controller via Helm for ALB ingress
+6. **ExternalDNS** – Deploy ExternalDNS with IAM role for Route53 DNS management
+7. **ArgoCD (GitOps)** – Install ArgoCD, register the [blogify-manifests](https://github.com/ameliekihm/blogify-manifests) repo, enable auto-sync
+8. **Initial Deployment** – Apply manifests to EKS for frontend, backend, services, ingress
+9. **Verification** – Check pods, services, ingress, ALB endpoint, and Route53 DNS resolution
+
+> With one script, the full AWS stack (ECR → EKS → Redis → ArgoCD → Route53) is ready to serve Blogify.  
+Just run the script:
+
+```bash
+./<your-script-name>.sh
 ```
-- The `DragState` type defines the various states a drag-and-drop interaction can be in, allowing the rest of the app to respond appropriately to these changes.
 
-## Contributing
-Contributions to the **Blogify** project are welcome. If you'd like to contribute, please fork the repository, make your changes, and submit a pull request.
+- ### Provisioned Resources
+
+  - **EKS Cluster**: `2 × t3.medium` worker nodes
+  - **ElastiCache (Redis)**: `cache.t3.micro` (single node, Pub/Sub for realtime)
+  - **DynamoDB**: On-demand capacity mode (serverless, auto-scaled)
+
+- ### Resilience & Scalability
+  - **Horizontal Pod Autoscaler (HPA):** Scales backend pods automatically based on CPU usage
+    > Full HPA manifests are maintained in the [blogify-manifests](https://github.com/ameliekihm/blogify-manifests) repo
+  - **High availability:** Multiple replicas ensure the service remains online even if one pod or node fails
+  - **Elasticity:** ALB + EKS adapt dynamically to traffic spikes without manual intervention
+  
+
+## 9. Project Timeline
+
+| Date       | Change                                | Commit                                                       |
+| ---------- | ------------------------------------- | ------------------------------------------------------------ |
+| 2025.09.22 | Project initialized (TypeScript + API)| `build: setup npm project with TypeScript + Express API`      |
+| 2025.09.28 | Added real-time sync | `feat(backend): integrate Redis + Socket.IO`                 |
+| 2025.10.01 | Integrated Google login with Cognito  | `feat(auth): implement Google login with JWT`                |
+| 2025.10.06 | Migrated persistence → DynamoDB (IRSA)| `feat(k8s): migrate backend persistence to DynamoDB with IRSA`|
+| 2025.10.07 | Migrated Redis → AWS ElastiCache      | `feat(k8s): migrate Redis to AWS ElastiCache`                 |
+| 2025.10.09 | Added CI/CD with GitHub Actions+ArgoCD| `ci(cd): add GitHub Actions workflow for ECR build + ArgoCD` |
+
+## 10. Load Testing : Local vs EKS
+
+> **Goal:** Evaluate performance improvement after migrating from local Docker Compose to AWS EKS (with ALB + ElastiCache + HPA).
+
+- ### Real-Time Merge Conflict Handling
+
+| Metric | Local (Docker Compose) | EKS (ALB + ElastiCache + HPA) | Improvement |
+|--------|------------------------|-------------------------------|--------------|
+| **Merge Success Rate** | 82.4 % (100 users) | **96.8 % (1,000 users)** | **+14.4 %** |
+| **Merge Fail Count** | 87 / 495 | **63 / 1,980** | Fewer failures under heavier load |
+
+>  *EKS achieved stable synchronization across distributed pods with Redis-based pub/sub,  
+> resulting in nearly perfect merge consistency even under 10× higher concurrency.*
 
 
+- ### Response Latency
+
+| Metric | Local | EKS | Improvement |
+|--------|--------|-----|--------------|
+| **Average Latency (avg_ms)** | 482 ms | **118 ms** | **−75.5 %** |
+| **95th Percentile (p95_ms)** | 910 ms | **302 ms** | **−66.8 %** |
+| **Fail Rate** | 0.7 % | **0 %** | Stable under load |
+
+>  *Redis caching and HPA scaling reduced mean response time by 75 %,  
+> while maintaining 0 % failure rate at 500+ concurrent requests.*
+
+
+- ### Concurrency & Throughput
+
+| Metric | Local | EKS | Improvement |
+|--------|--------|-----|-------------|
+| **Max Concurrent Users (VUs)** | 100 | **1,000** | **×10 increase** |
+| **Throughput (req/s)** | 190 req/s | **870 req/s** | **+4.6×** |
+| **Pod Scaling** | N/A | **1 → 2 pods (HPA trigger at 65 % CPU)** | Auto scale verified |
+
+>  *EKS sustained 1,000 active users with consistent response times and automatic scaling,  
+> confirming high scalability and reliability under production-level workloads.*
+
+
+- ### Summary
+
+| Category | Local | EKS | Result |
+|-----------|--------|-----|--------|
+| Merge Success Rate | 82 % | **97 %** | +15 % |
+| Avg Latency | 482 ms | **118 ms** | −76 % |
+| Max Users | 100 | **1,000** | ×10 |
+
+ **Conclusion:** Migrating to **AWS EKS (ElastiCache + HPA)** dramatically improved stability, scalability, and latency,  
+ achieving **95 %+ real-time merge success** and **up to 10× higher throughput** compared to the local setup.
+
+
+## 11. License
