@@ -28,3 +28,9 @@ iam_policy.json
 # Local IAM/Trust policies
 *.json
 !k8s/*.json
+
+# Load Testing
+/test
+/backend/backend.log
+backend/eks_backend.log
+eks_backend.log
