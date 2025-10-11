@@ -199,7 +199,7 @@ Just run the script:
 
 ## 10. Load Testing : Local vs EKS
 
-> **Goal:** Evaluate performance improvement after migrating from local Docker Compose to AWS EKS (with ALB + ElastiCache + HPA).
+> **Goal:** Evaluate performance improvement after migrating from local Docker Compose to AWS EKS (with ALB + ElastiCache + HPA)
 
 - ### Real-Time Merge Conflict Handling
 
@@ -209,7 +209,7 @@ Just run the script:
 | **Merge Fail Count** | 87 / 495 | **63 / 1,980** | Fewer failures under heavier load |
 
 >  *EKS achieved stable synchronization across distributed pods with Redis-based pub/sub,  
-> resulting in nearly perfect merge consistency even under **10× higher concurrency**.*
+> resulting in nearly perfect merge consistency even under **10× higher concurrency***
 
 
 - ### Response Latency
@@ -221,7 +221,7 @@ Just run the script:
 | **Fail Rate** | 0.7 % | **0 %** | Stable under load |
 
 > *Redis caching and HPA scaling reduced average response time by about **60 %**,  
-> while maintaining **0 % failure rate** at over **500 concurrent requests**.*
+> while maintaining **0 % failure rate** at over **500 concurrent requests***
 
 
 
@@ -234,7 +234,7 @@ Just run the script:
 | **Pod Scaling** | N/A | **1 → 2 pods (HPA trigger at 65 % CPU)** | Auto scale verified |
 
 >  *EKS sustained **1,000 active users** with consistent response times and automatic scaling,  
-> confirming **high scalability** and **reliability** under production-level workloads.*
+> confirming **high scalability** and **reliability** under production-level workloads*
 
 
 - ### Summary
@@ -246,8 +246,9 @@ Just run the script:
 | Max Users | 100 | **1,000** | ×10 |
 
 **Conclusion:** Migrating to **AWS EKS (ElastiCache + HPA)** significantly improved stability, scalability, and latency,  
-achieving **95 %+ real-time merge success** and **about 10× higher throughput** compared to the local environment.
+achieving **`95 %+`** real-time merge success and about **`10×`** higher throughput compared to the local environment
 
 
 
 ## 11. License
+This project is licensed under the [MIT License](./LICENSE).
