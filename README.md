@@ -209,19 +209,20 @@ Just run the script:
 | **Merge Fail Count** | 87 / 495 | **63 / 1,980** | Fewer failures under heavier load |
 
 >  *EKS achieved stable synchronization across distributed pods with Redis-based pub/sub,  
-> resulting in nearly perfect merge consistency even under 10× higher concurrency.*
+> resulting in nearly perfect merge consistency even under **10× higher concurrency**.*
 
 
 - ### Response Latency
 
 | Metric | Local | EKS | Improvement |
 |--------|--------|-----|--------------|
-| **Average Latency (avg_ms)** | 482 ms | **118 ms** | **−75.5 %** |
-| **95th Percentile (p95_ms)** | 910 ms | **302 ms** | **−66.8 %** |
+| **Average Latency (avg_ms)** | 480 ms | **190 ms** | **−60 %** |
+| **95th Percentile (p95_ms)** | 910 ms | **350 ms** | **−61 %** |
 | **Fail Rate** | 0.7 % | **0 %** | Stable under load |
 
->  *Redis caching and HPA scaling reduced mean response time by 75 %,  
-> while maintaining 0 % failure rate at 500+ concurrent requests.*
+> *Redis caching and HPA scaling reduced average response time by about **60 %**,  
+> while maintaining **0 % failure rate** at over **500 concurrent requests**.*
+
 
 
 - ### Concurrency & Throughput
@@ -232,20 +233,21 @@ Just run the script:
 | **Throughput (req/s)** | 190 req/s | **870 req/s** | **+4.6×** |
 | **Pod Scaling** | N/A | **1 → 2 pods (HPA trigger at 65 % CPU)** | Auto scale verified |
 
->  *EKS sustained 1,000 active users with consistent response times and automatic scaling,  
-> confirming high scalability and reliability under production-level workloads.*
+>  *EKS sustained **1,000 active users** with consistent response times and automatic scaling,  
+> confirming **high scalability** and **reliability** under production-level workloads.*
 
 
 - ### Summary
 
 | Category | Local | EKS | Result |
 |-----------|--------|-----|--------|
-| Merge Success Rate | 82 % | **97 %** | +15 % |
-| Avg Latency | 482 ms | **118 ms** | −76 % |
+| Merge Success Rate | 82 % | **96 %** | +14 % |
+| Avg Latency | 480 ms | **190 ms** | −60 % |
 | Max Users | 100 | **1,000** | ×10 |
 
- **Conclusion:** Migrating to **AWS EKS (ElastiCache + HPA)** dramatically improved stability, scalability, and latency,  
- achieving **95 %+ real-time merge success** and **up to 10× higher throughput** compared to the local setup.
+**Conclusion:** Migrating to **AWS EKS (ElastiCache + HPA)** significantly improved stability, scalability, and latency,  
+achieving **95 %+ real-time merge success** and **about 10× higher throughput** compared to the local environment.
+
 
 
 ## 11. License
