@@ -81,9 +81,9 @@ export class NoteComponent extends BaseComponent<HTMLElement> {
     });
 
     socket.on('post-typing', (data: any) => {
-      if (data.id === this.postId && !this.editing) {
-        this.titleEl.innerHTML = data.title;
-        this.bodyEl.innerHTML = data.body;
+      if (data.id === this.postId) {
+        this.titleEl.innerText = data.title;
+        this.bodyEl.innerText = data.body;
       }
     });
   }
@@ -156,8 +156,9 @@ export class NoteComponent extends BaseComponent<HTMLElement> {
     if (!this.postId) return;
     socket.emit('post-typing', {
       id: this.postId,
-      title: this.titleEl.innerHTML,
-      body: this.bodyEl.innerHTML,
+      title: this.titleEl.innerText,
+      body: this.bodyEl.innerText,
+      checks: [],
     });
   }
 
